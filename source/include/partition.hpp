@@ -177,7 +177,7 @@ namespace gch
     
     template <typename ...EdgeFuncs,
               typename = typename std::enable_if<(N > 0 && (sizeof... (EdgeFuncs) == N + 1))>::type>
-    explicit partition (EdgeFuncs&&... edges)
+    constexpr explicit partition (EdgeFuncs&&... edges)
       : partition (std::integral_constant<std::size_t, 0> {}, std::forward<EdgeFuncs> (edges)...)
     { }
   
@@ -185,13 +185,13 @@ namespace gch
               typename = typename std::enable_if<(sizeof... (Subranges) == N) &&
                 conjunction<std::is_same<subrange_type, Subrange>,
                                  std::is_same<subrange_type, Subranges>...>::value>::type>
-    explicit partition (Subrange&& rng, Subranges&&... rngs)
+    constexpr explicit partition (Subrange&& rng, Subranges&&... rngs)
       : m_subranges (std::forward<Subrange> (rng), std::forward<Subranges> (rngs)...)
     { }
   
     template <typename ...EdgeFuncs,
               typename = typename std::enable_if<(sizeof... (EdgeFuncs) == N - 1)>::type>
-    explicit partition (Container& c, EdgeFuncs&&... edges)
+    constexpr explicit partition (Container& c, EdgeFuncs&&... edges)
       : partition (std::integral_constant<std::size_t, 0> {},
                    [&c] (void) -> typename subrange_type::iter { return c.begin (); },
                    std::forward<EdgeFuncs> (edges)...,
@@ -364,7 +364,7 @@ namespace gch
   private:
   
     template <typename EdgeFuncL, typename EdgeFuncR, typename ...EdgeFuncs, std::size_t Index>
-    partition (std::integral_constant<std::size_t, Index>,
+    GCH_CPP14_CONSTEXPR partition (std::integral_constant<std::size_t, Index>,
                EdgeFuncL&& edge_l, EdgeFuncR&& edge_r, EdgeFuncs&&... edges)
       : partition (std::integral_constant<std::size_t, Index + 1> { },
                    edge_r, std::forward<EdgeFuncs> (edges)...)
@@ -374,7 +374,7 @@ namespace gch
     }
   
     template <typename EdgeFuncL, typename EdgeFuncR>
-    partition (std::integral_constant<std::size_t, N - 1>,
+    GCH_CPP14_CONSTEXPR partition (std::integral_constant<std::size_t, N - 1>,
                EdgeFuncL&& edge_l, EdgeFuncR&& edge_end)
     {
       std::get<N - 1> (m_subranges) = { std::forward<EdgeFuncL> (edge_l),

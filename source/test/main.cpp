@@ -9,9 +9,9 @@
 
 #include <partition.hpp>
 
+#include <algorithm>
 #include <iostream>
 #include <list>
-#include <algorithm>
 
 class test_subrange
 {
