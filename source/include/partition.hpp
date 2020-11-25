@@ -10,9 +10,8 @@
 #ifndef PARTITION_HPP
 #define PARTITION_HPP
 
-#include <iterator>
+#include <array>
 #include <functional>
-#include <list>
 
 #ifndef GCH_CPP14_CONSTEXPR
 #  if __cpp_constexpr >= 201304L
@@ -48,6 +47,12 @@
 
 namespace gch
 {
+  
+  template <typename Container>
+  class subrange;
+  
+  template <typename Container, std::size_t N>
+  class partition;
   
   namespace adl
   {
@@ -141,8 +146,19 @@ namespace gch
   template <typename Container, std::size_t N>
   class partition
   {
-  public:
+    template<typename ...>
+    struct conjunction : std::true_type
+    { };
     
+    template<class T>
+    struct conjunction<T> : T
+    { };
+    
+    template<class T, class ...Ts>
+    struct conjunction<T, Ts...> : std::conditional<bool (T::value), conjunction<Ts...>, T>::type
+    { };
+    
+  public:
     using subrange_type = subrange<Container>;
     
     using iter   = typename std::array<subrange_type, N>::iterator;
@@ -167,7 +183,7 @@ namespace gch
   
     template <typename Subrange, typename ...Subranges,
               typename = typename std::enable_if<(sizeof... (Subranges) == N) &&
-                std::conjunction<std::is_same<subrange_type, Subrange>,
+                conjunction<std::is_same<subrange_type, Subrange>,
                                  std::is_same<subrange_type, Subranges>...>::value>::type>
     explicit partition (Subrange&& rng, Subranges&&... rngs)
       : m_subranges (std::forward<Subrange> (rng), std::forward<Subranges> (rngs)...)
@@ -181,8 +197,6 @@ namespace gch
                    std::forward<EdgeFuncs> (edges)...,
                    [&c] (void) -> typename subrange_type::iter { return c.end (); })
     { }
-    
-    
     
     GCH_NODISCARD iter    begin   (void)       noexcept { return m_subranges.begin ();   }
     GCH_NODISCARD citer   begin   (void) const noexcept { return m_subranges.begin ();   }
@@ -316,30 +330,36 @@ namespace gch
     }
     
 #endif
-  
+
     template <std::size_t Index>
-    friend GCH_CPP14_CONSTEXPR subrange<Container>& get (partition& p) noexcept
+    GCH_CPP14_CONSTEXPR subrange_type& get (void)& noexcept
     {
-      return std::get<Index> (p.m_subranges);
+      return std::get<Index> (m_subranges);
     }
   
     template <std::size_t Index>
-    friend GCH_CPP14_CONSTEXPR subrange<Container>&& get (partition&& p) noexcept
+    GCH_CPP14_CONSTEXPR subrange_type&& get (void)&& noexcept
     {
-      return std::get<Index> (p.m_subranges);
+      return std::get<Index> (m_subranges);
     }
   
     template <std::size_t Index>
-    friend GCH_CPP14_CONSTEXPR const subrange<Container>& get (const partition& p) noexcept
+    constexpr const subrange_type& get (void) const& noexcept
     {
-      return std::get<Index> (p.m_subranges);
+      return std::get<Index> (m_subranges);
     }
   
     template <std::size_t Index>
-    friend GCH_CPP14_CONSTEXPR const subrange<Container>&& get (const partition&& p) noexcept
+    constexpr const subrange_type&& get (void) const&& noexcept
     {
-      return std::get<Index> (p.m_subranges);
+      return std::get<Index> (m_subranges);
     }
+
+    // template <std::size_t I, typename T>
+    // friend typename std::tuple_element<I, T>::type& get (T& p) noexcept
+    // {
+    //   return std::get<I> (p.m_subranges);
+    // }
     
   private:
   
@@ -465,16 +485,28 @@ namespace gch
   }
   
   template <std::size_t Index, typename Container, std::size_t N>
-  GCH_CPP14_CONSTEXPR subrange<Container>& get (partition<Container, N>& p) noexcept;
+  constexpr subrange<Container>& get (partition<Container, N>& p) noexcept
+  {
+    return p.template get<Index> ();
+  }
   
   template <std::size_t Index, typename Container, std::size_t N>
-  GCH_CPP14_CONSTEXPR subrange<Container>&& get (partition<Container, N>&& p) noexcept;
+  constexpr subrange<Container>&& get (partition<Container, N>&& p) noexcept
+  {
+    return p.template get<Index> ();
+  }
   
   template <std::size_t Index, typename Container, std::size_t N>
-  GCH_CPP14_CONSTEXPR const subrange<Container>& get (const partition<Container, N>& p) noexcept;
+  constexpr const subrange<Container>& get (const partition<Container, N>& p) noexcept
+  {
+    return p.template get<Index> ();
+  }
   
   template <std::size_t Index, typename Container, std::size_t N>
-  GCH_CPP14_CONSTEXPR const subrange<Container>&& get (const partition<Container, N>&& p) noexcept;
+  constexpr const subrange<Container>&& get (const partition<Container, N>&& p) noexcept
+  {
+    return p.template get<Index> ();
+  }
   
   template <typename Container, std::size_t N>
   void swap (partition<Container, N>& lhs, partition<Container, N>& rhs)
@@ -486,21 +518,15 @@ namespace gch
 
 namespace std
 {
-  template <typename T>
-  struct tuple_size;
-  
   template <typename Container, std::size_t N>
   struct tuple_size<gch::partition<Container, N>>
     : std::integral_constant<std::size_t, N>
   { };
   
-  template <std::size_t I, typename T>
-  struct tuple_element;
-  
   template <std::size_t I, typename Container, std::size_t N>
   struct tuple_element<I, gch::partition<Container, N>>
   {
-    using type = Container;
+    using type = typename gch::partition<Container, N>::subrange_type;
   };
 }
 

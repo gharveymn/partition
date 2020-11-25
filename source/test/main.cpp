@@ -203,11 +203,11 @@ public:
     std::cout << std::endl;
   }
   
-  gch::subrange<std::list<int>>& get_phi (void) { return get<0> (m_partition); }
-  const gch::subrange<std::list<int>>& get_phi (void) const { return get<0> (m_partition); }
+  gch::subrange<std::list<int>>& get_phi (void) { return gch::get<0> (m_partition); }
+  const gch::subrange<std::list<int>>& get_phi (void) const { return gch::get<0> (m_partition); }
   
-  gch::subrange<std::list<int>>& get_body (void) { return get<1> (m_partition); }
-  const gch::subrange<std::list<int>>& get_body (void) const { return get<1> (m_partition); }
+  gch::subrange<std::list<int>>& get_body (void) { return gch::get<1> (m_partition); }
+  const gch::subrange<std::list<int>>& get_body (void) const { return gch::get<1> (m_partition); }
 
 private:
   std::list<int> m_data;
