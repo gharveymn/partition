@@ -4,5 +4,6 @@
 !.gitignore
 !.gitmodules
 !CMakeLists.txt
+!LICENSE
 !/docs
 !/source
