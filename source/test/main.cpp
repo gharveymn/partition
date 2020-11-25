@@ -103,17 +103,17 @@ public:
     std::cout << std::endl;
   }
   
-  gch::subrange<std::list<int>>& get_phi (void) { return m_phi_range; }
-  const gch::subrange<std::list<int>>& get_phi (void) const { return m_phi_range; }
+  gch::dependent_subrange<std::list<int>>& get_phi (void) { return m_phi_range; }
+  const gch::dependent_subrange<std::list<int>>& get_phi (void) const { return m_phi_range; }
   
-  gch::subrange<std::list<int>>& get_body (void) { return m_body_range; }
-  const gch::subrange<std::list<int>>& get_body (void) const { return m_body_range; }
+  gch::dependent_subrange<std::list<int>>& get_body (void) { return m_body_range; }
+  const gch::dependent_subrange<std::list<int>>& get_body (void) const { return m_body_range; }
 
 private:
   std::list<int> m_data;
   std::list<int>::iterator m_pivot;
-  gch::subrange<std::list<int>> m_phi_range;
-  gch::subrange<std::list<int>> m_body_range;
+  gch::dependent_subrange<std::list<int>> m_phi_range;
+  gch::dependent_subrange<std::list<int>> m_body_range;
   
 };
 
@@ -203,16 +203,16 @@ public:
     std::cout << std::endl;
   }
   
-  gch::subrange<std::list<int>>& get_phi (void) { return gch::get<0> (m_partition); }
-  const gch::subrange<std::list<int>>& get_phi (void) const { return gch::get<0> (m_partition); }
+  gch::dependent_subrange<std::list<int>>& get_phi (void) { return gch::get<0> (m_partition); }
+  const gch::dependent_subrange<std::list<int>>& get_phi (void) const { return gch::get<0> (m_partition); }
   
-  gch::subrange<std::list<int>>& get_body (void) { return gch::get<1> (m_partition); }
-  const gch::subrange<std::list<int>>& get_body (void) const { return gch::get<1> (m_partition); }
+  gch::dependent_subrange<std::list<int>>& get_body (void) { return gch::get<1> (m_partition); }
+  const gch::dependent_subrange<std::list<int>>& get_body (void) const { return gch::get<1> (m_partition); }
 
 private:
   std::list<int> m_data;
   std::list<int>::iterator m_pivot;
-  gch::partition<std::list<int>, 2> m_partition;
+  gch::partition_view<std::list<int>, 2> m_partition;
   
 };
 

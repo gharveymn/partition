@@ -49,10 +49,10 @@ namespace gch
 {
   
   template <typename Container>
-  class subrange;
+  class dependent_subrange;
   
   template <typename Container, std::size_t N>
-  class partition;
+  class partition_view;
   
   namespace adl
   {
@@ -71,7 +71,7 @@ namespace gch
   }
   
   template <typename Container>
-  class subrange
+  class dependent_subrange
   {
   public:
     
@@ -82,15 +82,15 @@ namespace gch
     using ref    = typename Container::reference;
     using cref   = typename Container::const_reference;
     
-    subrange            (void)                = default;
-    subrange            (const subrange&)     = default;
-    subrange            (subrange&&) noexcept = default;
-    subrange& operator= (const subrange&)     = default;
-    subrange& operator= (subrange&&) noexcept = default;
-    ~subrange           (void)                = default;
+    dependent_subrange (void)                                     = default;
+    dependent_subrange (const dependent_subrange&)                = default;
+    dependent_subrange (dependent_subrange&&) noexcept            = default;
+    dependent_subrange& operator= (const dependent_subrange&)     = default;
+    dependent_subrange& operator= (dependent_subrange&&) noexcept = default;
+    ~dependent_subrange (void)                                    = default;
     
     template <typename Functor1, typename Functor2>
-    constexpr subrange (Functor1&& begin_func, Functor2&& end_func)
+    constexpr dependent_subrange (Functor1&& begin_func, Functor2&& end_func)
     noexcept
       : m_begin_func (std::forward<Functor1> (begin_func)),
         m_end_func (std::forward<Functor2> (end_func))
@@ -128,7 +128,7 @@ namespace gch
     
     GCH_NODISCARD bool empty (void) const noexcept { return begin () == end (); }
     
-    void swap (subrange other)
+    void swap (dependent_subrange other)
       noexcept (noexcept (adl::resolved::swap (std::declval<std::function<iter ()>&> (),
                                                std::declval<std::function<iter ()>&> ())))
     {
@@ -144,7 +144,7 @@ namespace gch
   };
   
   template <typename Container, std::size_t N>
-  class partition
+  class partition_view
   {
     template<typename ...>
     struct conjunction : std::true_type
@@ -159,7 +159,7 @@ namespace gch
     { };
     
   public:
-    using subrange_type = subrange<Container>;
+    using subrange_type = dependent_subrange<Container>;
     
     using iter   = typename std::array<subrange_type, N>::iterator;
     using citer  = typename std::array<subrange_type, N>::const_iterator;
@@ -168,33 +168,33 @@ namespace gch
     using ref    = typename std::array<subrange_type, N>::reference;
     using cref   = typename std::array<subrange_type, N>::const_reference;
     
-    partition            (void)                 = default;
-    partition            (const partition&)     = default;
-    partition            (partition&&) noexcept = default;
-    partition& operator= (const partition&)     = default;
-    partition& operator= (partition&&) noexcept = default;
-    ~partition           (void)                 = default;
+    partition_view (void)                 = default;
+    partition_view (const partition_view&)     = default;
+    partition_view (partition_view&&) noexcept = default;
+    partition_view& operator= (const partition_view&)     = default;
+    partition_view& operator= (partition_view&&) noexcept = default;
+    ~partition_view (void)                 = default;
     
     template <typename ...EdgeFuncs,
               typename = typename std::enable_if<(N > 0 && (sizeof... (EdgeFuncs) == N + 1))>::type>
-    constexpr explicit partition (EdgeFuncs&&... edges)
-      : partition (std::integral_constant<std::size_t, 0> {}, std::forward<EdgeFuncs> (edges)...)
+    constexpr explicit partition_view (EdgeFuncs&&... edges)
+      : partition_view (std::integral_constant<std::size_t, 0> {}, std::forward<EdgeFuncs> (edges)...)
     { }
   
     template <typename Subrange, typename ...Subranges,
               typename = typename std::enable_if<(sizeof... (Subranges) == N) &&
                 conjunction<std::is_same<subrange_type, Subrange>,
                                  std::is_same<subrange_type, Subranges>...>::value>::type>
-    constexpr explicit partition (Subrange&& rng, Subranges&&... rngs)
+    constexpr explicit partition_view (Subrange&& rng, Subranges&&... rngs)
       : m_subranges (std::forward<Subrange> (rng), std::forward<Subranges> (rngs)...)
     { }
   
     template <typename ...EdgeFuncs,
               typename = typename std::enable_if<(sizeof... (EdgeFuncs) == N - 1)>::type>
-    constexpr explicit partition (Container& c, EdgeFuncs&&... edges)
-      : partition (std::integral_constant<std::size_t, 0> {},
+    constexpr explicit partition_view (Container& c, EdgeFuncs&&... edges)
+      : partition_view (std::integral_constant<std::size_t, 0> {},
                    [&c] (void) -> typename subrange_type::iter { return c.begin (); },
-                   std::forward<EdgeFuncs> (edges)...,
+                        std::forward<EdgeFuncs> (edges)...,
                    [&c] (void) -> typename subrange_type::iter { return c.end (); })
     { }
     
@@ -268,8 +268,8 @@ namespace gch
     {
       m_subranges.fill (s);
     }
-
-    GCH_CPP20_CONSTEXPR void swap (partition& other)
+    
+    GCH_CPP20_CONSTEXPR void swap (partition_view& other)
       noexcept (noexcept (adl::resolved::swap (std::declval<std::array<subrange_type, N>&> (),
                                                std::declval<std::array<subrange_type, N>&> ())))
     {
@@ -294,37 +294,37 @@ namespace gch
 #else
     
     GCH_NODISCARD
-    friend bool operator== (const partition& lhs, const partition& rhs)
+    friend bool operator== (const partition_view& lhs, const partition_view& rhs)
     {
       return lhs.m_subranges == rhs.m_subranges;
     }
     
     GCH_NODISCARD
-    friend bool operator!= (const partition& lhs, const partition& rhs)
+    friend bool operator!= (const partition_view& lhs, const partition_view& rhs)
     {
       return lhs.m_subranges != rhs.m_subranges;
     }
     
     GCH_NODISCARD
-    friend bool operator< (const partition& lhs, const partition& rhs)
+    friend bool operator< (const partition_view& lhs, const partition_view& rhs)
     {
       return lhs.m_subranges < rhs.m_subranges;
     }
     
     GCH_NODISCARD
-    friend bool operator<= (const partition& lhs, const partition& rhs)
+    friend bool operator<= (const partition_view& lhs, const partition_view& rhs)
     {
       return lhs.m_subranges <= rhs.m_subranges;
     }
     
     GCH_NODISCARD
-    friend bool operator> (const partition& lhs, const partition& rhs)
+    friend bool operator> (const partition_view& lhs, const partition_view& rhs)
     {
       return lhs.m_subranges > rhs.m_subranges;
     }
     
     GCH_NODISCARD
-    friend bool operator>= (const partition& lhs, const partition& rhs)
+    friend bool operator>= (const partition_view& lhs, const partition_view& rhs)
     {
       return lhs.m_subranges >= rhs.m_subranges;
     }
@@ -364,18 +364,18 @@ namespace gch
   private:
   
     template <typename EdgeFuncL, typename EdgeFuncR, typename ...EdgeFuncs, std::size_t Index>
-    GCH_CPP14_CONSTEXPR partition (std::integral_constant<std::size_t, Index>,
-               EdgeFuncL&& edge_l, EdgeFuncR&& edge_r, EdgeFuncs&&... edges)
-      : partition (std::integral_constant<std::size_t, Index + 1> { },
-                   edge_r, std::forward<EdgeFuncs> (edges)...)
+    GCH_CPP14_CONSTEXPR partition_view (std::integral_constant<std::size_t, Index>,
+                                        EdgeFuncL&& edge_l, EdgeFuncR&& edge_r, EdgeFuncs&&... edges)
+      : partition_view (std::integral_constant<std::size_t, Index + 1> { },
+                        edge_r, std::forward<EdgeFuncs> (edges)...)
     {
       std::get<Index> (m_subranges) = { std::forward<EdgeFuncL> (edge_l),
                                         std::forward<EdgeFuncR> (edge_r) };
     }
   
     template <typename EdgeFuncL, typename EdgeFuncR>
-    GCH_CPP14_CONSTEXPR partition (std::integral_constant<std::size_t, N - 1>,
-               EdgeFuncL&& edge_l, EdgeFuncR&& edge_end)
+    GCH_CPP14_CONSTEXPR partition_view (std::integral_constant<std::size_t, N - 1>,
+                                        EdgeFuncL&& edge_l, EdgeFuncR&& edge_end)
     {
       std::get<N - 1> (m_subranges) = { std::forward<EdgeFuncL> (edge_l),
                                         std::forward<EdgeFuncR> (edge_end) };
@@ -440,37 +440,37 @@ namespace gch
 #else
   
   template <typename Container>
-  bool operator== (const subrange<Container>& lhs, const subrange<Container>& rhs)
+  bool operator== (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
   {
     return std::equal (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
   }
   
   template <typename Container>
-  bool operator!= (const subrange<Container>& lhs, const subrange<Container>& rhs)
+  bool operator!= (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
   {
     return ! (lhs == rhs);
   }
   
   template <typename Container>
-  bool operator< (const subrange<Container>& lhs, const subrange<Container>& rhs)
+  bool operator< (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
   {
     return std::lexicographical_compare (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
   }
   
   template <typename Container>
-  bool operator<= (const subrange<Container>& lhs, const subrange<Container>& rhs)
+  bool operator<= (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
   {
     return ! (lhs > rhs);
   }
   
   template <typename Container>
-  bool operator> (const subrange<Container>& lhs, const subrange<Container>& rhs)
+  bool operator> (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
   {
     return std::lexicographical_compare (rhs.begin (), rhs.end (), lhs.begin (), lhs.end ());
   }
   
   template <typename Container>
-  bool operator>= (const subrange<Container>& lhs, const subrange<Container>& rhs)
+  bool operator>= (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
   {
     return ! (lhs < rhs);
   }
@@ -478,38 +478,38 @@ namespace gch
 #endif
   
   template <typename Container>
-  void swap (subrange<Container>& lhs, subrange<Container>& rhs)
+  void swap (dependent_subrange<Container>& lhs, dependent_subrange<Container>& rhs)
     noexcept (noexcept (lhs.swap (rhs)))
   {
     lhs.swap (rhs);
   }
   
   template <std::size_t Index, typename Container, std::size_t N>
-  constexpr subrange<Container>& get (partition<Container, N>& p) noexcept
+  constexpr dependent_subrange<Container>& get (partition_view<Container, N>& p) noexcept
   {
     return p.template get<Index> ();
   }
   
   template <std::size_t Index, typename Container, std::size_t N>
-  constexpr subrange<Container>&& get (partition<Container, N>&& p) noexcept
+  constexpr dependent_subrange<Container>&& get (partition_view<Container, N>&& p) noexcept
   {
     return p.template get<Index> ();
   }
   
   template <std::size_t Index, typename Container, std::size_t N>
-  constexpr const subrange<Container>& get (const partition<Container, N>& p) noexcept
+  constexpr const dependent_subrange<Container>& get (const partition_view<Container, N>& p) noexcept
   {
     return p.template get<Index> ();
   }
   
   template <std::size_t Index, typename Container, std::size_t N>
-  constexpr const subrange<Container>&& get (const partition<Container, N>&& p) noexcept
+  constexpr const dependent_subrange<Container>&& get (const partition_view<Container, N>&& p) noexcept
   {
     return p.template get<Index> ();
   }
   
   template <typename Container, std::size_t N>
-  void swap (partition<Container, N>& lhs, partition<Container, N>& rhs)
+  void swap (partition_view<Container, N>& lhs, partition_view<Container, N>& rhs)
     noexcept (noexcept (lhs.swap (rhs)))
   {
     lhs.swap (rhs);
@@ -519,14 +519,14 @@ namespace gch
 namespace std
 {
   template <typename Container, std::size_t N>
-  struct tuple_size<gch::partition<Container, N>>
+  struct tuple_size<gch::partition_view<Container, N>>
     : std::integral_constant<std::size_t, N>
   { };
   
   template <std::size_t I, typename Container, std::size_t N>
-  struct tuple_element<I, gch::partition<Container, N>>
+  struct tuple_element<I, gch::partition_view<Container, N>>
   {
-    using type = typename gch::partition<Container, N>::subrange_type;
+    using type = typename gch::partition_view<Container, N>::subrange_type;
   };
 }
 
