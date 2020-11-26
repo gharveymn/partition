@@ -53,6 +53,10 @@ namespace gch
     : public partition_subrange<std::list<ListArgs...>, N, 1>
   {
     friend partition_subrange<std::list<ListArgs...>, N, 1>;
+  
+    template <typename, std::size_t, std::size_t, typename>
+    friend class partition_subrange;
+    
   protected:
     using container_type = std::list<ListArgs...>;
     using subrange_type  = partition_subrange<container_type, N, 0>;
@@ -71,12 +75,12 @@ namespace gch
     using value_type = typename container_type::value_type;
     using alloc_type = typename container_type::value_type;
   
-    partition_subrange            (void)                               = default;
+    partition_subrange            (void)                          = default;
     partition_subrange            (const partition_subrange&)     = default;
     partition_subrange            (partition_subrange&&) noexcept = default;
-//  partition_subrange& operator= (const partition_subrange&)     = default;
+//  partition_subrange& operator= (const partition_subrange&)     = impl;
 //  partition_subrange& operator= (partition_subrange&&) noexcept = impl;
-    ~partition_subrange           (void)                               = default;
+    ~partition_subrange           (void)                          = default;
   
     partition_subrange& operator= (const partition_subrange& other) noexcept
     {
@@ -94,9 +98,47 @@ namespace gch
   
     partition_subrange& operator= (partition_subrange&& other) noexcept
     {
-      clear ();
-      m_container.splice (cend (), other.m_container, other.begin (), other.end ());
+      if (empty ())
+      {
+        splice (cend (), std::move (other));
+      }
+      else
+      {
+        auto last = --end ();
+        splice (cend (), std::move (other));
+        erase (begin (), last);
+      }
       return *this;
+    }
+  
+    void assign (size_type count, const value_type& val)
+    {
+      auto it = begin ();
+      for (; it != end () && count != 0; ++it, --count)
+        *it = val;
+    
+      if (count > 0)
+        insert (end (), count, val);
+      else
+        erase (count, end ());
+    }
+  
+    template <typename It>
+    void assign (It first, It last)
+    {
+      It curr = begin ();
+      for (; curr != end () && first != last; ++curr, (void)++first)
+        *curr = *first;
+    
+      if (first == last)
+        erase(curr, end ());
+      else
+        insert(end (), first, last);
+    }
+  
+    void assign (std::initializer_list<value_type> ilist)
+    {
+      assign (ilist.begin (), ilist.end ());
     }
   
     alloc_type get_allocator (void) const noexcept
@@ -139,6 +181,11 @@ namespace gch
     GCH_NODISCARD bool empty (void) const noexcept
     {
       return cbegin () == cend ();
+    }
+  
+    GCH_NODISCARD size_type max_size (void) const noexcept
+    {
+      return m_container.max_size ();
     }
   
     void clear (void) noexcept
@@ -202,6 +249,114 @@ namespace gch
       m_container.pop_front ();
     }
   
+    template <std::size_t M, std::size_t Idx>
+    void swap (partition_subrange<container_type, M, Idx>& other)
+      noexcept (noexcept (std::declval<container_type> ().swap (std::declval<container_type&> ())))
+    {
+      if (&other == this)
+        return;
+      
+      container_type tmp1;
+      container_type tmp2;
+      tmp1.splice (tmp1.cend (), std::move (m_container), cbegin (), cend ());
+      tmp2.splice (tmp2.cend (), std::move (other.m_container), other.cbegin (), other.cend ());
+      tmp1.swap (tmp2);
+    
+      auto new_front1 = tmp1.begin ();
+      auto new_front2 = tmp2.begin ();
+    
+      m_container.splice (cend (), tmp1);
+    
+      other.m_container.splice (cend (), tmp2);
+      other.absolute_propagate_front (new_front2);
+    }
+  
+  
+    template <std::size_t M, std::size_t Idx, typename ...Args>
+    void merge (partition_subrange<container_type, M, Idx>& other, Args&&... args)
+    {
+      merge (std::move (other), std::forward<Args> (args)...);
+    }
+  
+    template <std::size_t M, std::size_t Idx, typename ...Args>
+    void merge (partition_subrange<container_type, M, Idx>&& other, Args&&... args)
+    {
+      if (&other == this)
+        return;
+      
+      container_type tmp1;
+      container_type tmp2;
+      tmp1.splice (tmp1.cend (), std::move (m_container), cbegin (), cend ());
+      tmp2.splice (tmp2.cend (), std::move (other.m_container), other.cbegin (), other.cend ());
+      tmp1.merge (std::move (tmp2), std::forward<Args> (args)...);
+      m_container.splice (cend (), tmp1);
+      other.absolute_propagate_front (other.end ());
+    }
+  
+    template <std::size_t M, std::size_t Idx, typename ...Args>
+    void splice (citer pos, partition_subrange<container_type, M, Idx>& other, Args&&... args)
+    {
+      splice (pos, std::move (other), std::forward<Args> (args)...);
+    }
+  
+    template <std::size_t M, std::size_t Idx>
+    void splice (citer pos, partition_subrange<container_type, M, Idx>&& other)
+    {
+      m_container.splice (pos, std::move (other.m_container), other.cbegin (), other.cend ());
+      other.absolute_propagate_front (other.cend ());
+    }
+  
+    template <std::size_t M, std::size_t Idx>
+    void splice (citer pos, partition_subrange<container_type, M, Idx>&& other, citer it)
+    {
+      auto new_other_front = std::next (it);
+      m_container.splice (pos, std::move (other.m_container), it);
+      other.propagate_front (it, new_other_front);
+    }
+  
+    template <std::size_t M, std::size_t Idx>
+    void splice (citer pos, partition_subrange<container_type, M, Idx>&& other,
+                 citer first, citer last)
+    {
+      m_container.splice (pos, std::move (other.m_container), first, last);
+      other.propagate_front (first, last);
+    }
+  
+    void remove (const value_type& val)
+    {
+      container_type tmp;
+      tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
+      tmp.remove (val);
+      m_container.splice (cend (), tmp);
+    }
+  
+    template <typename UnaryPredicate>
+    void remove_if (UnaryPredicate&& p)
+    {
+      container_type tmp;
+      tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
+      tmp.remove_if (std::forward<UnaryPredicate> (p));
+      m_container.splice (cend (), tmp);
+    }
+  
+    template <typename ...Args>
+    void unique (Args&&... args)
+    {
+      container_type tmp;
+      tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
+      tmp.unique (std::forward<Args> (args)...);
+      m_container.splice (cend (), tmp);
+    }
+  
+    template <typename ...Args>
+    void sort (Args&&... args)
+    {
+      container_type tmp;
+      tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
+      tmp.sort (std::forward<Args> (args)...);
+      m_container.splice (cend (), tmp);
+    }
+  
     void resize (size_type count)
     {
       citer cit = resize_pos (count);
@@ -233,10 +388,9 @@ namespace gch
         erase (cit, cend ());
     }
 
-// TODO merge, splice, remove, remove_if, reverse, unique, sort
-
   private:
   
+    void absolute_propagate_front (iter) { }
     void propagate_front (iter, iter) { }
   
     citer resize_pos (size_type& count) const
@@ -272,6 +426,10 @@ namespace gch
     : public partition_subrange<std::list<ListArgs...>, N, Index + 1>
   {
     friend partition_subrange<std::list<ListArgs...>, N, Index + 1>;
+  
+    template <typename, std::size_t, std::size_t, typename>
+    friend class partition_subrange;
+    
   protected:
     using container_type     = std::list<ListArgs...>;
     using subrange_type = partition_subrange<container_type, N, Index>;
@@ -291,16 +449,22 @@ namespace gch
     using value_type = typename container_type::value_type;
     using alloc_type = typename container_type::value_type;
     
-//  partition_subrange            (void)                               = impl;
-    partition_subrange            (const partition_subrange&)     = default;
+//  partition_subrange            (void)                          = impl;
+//  partition_subrange            (const partition_subrange&)     = impl;
     partition_subrange            (partition_subrange&&) noexcept = default;
 //  partition_subrange& operator= (const partition_subrange&)     = impl;
 //  partition_subrange& operator= (partition_subrange&&) noexcept = impl;
-    ~partition_subrange           (void)                               = default;
+    ~partition_subrange           (void)                          = default;
     
     partition_subrange (void)
       : next_type (),
         m_front (m_container.end ())
+    { }
+  
+    partition_subrange (const partition_subrange& other)
+      : next_type (),
+        m_front (std::advance (m_container.begin (),
+                               std::distance (other.m_container.begin (), other.m_front)))
     { }
   
     partition_subrange& operator= (const partition_subrange& other) noexcept
@@ -319,18 +483,53 @@ namespace gch
   
     partition_subrange& operator= (partition_subrange&& other) noexcept
     {
-      clear ();
-      m_container.splice (cend (), other.m_container, other.begin (), other.end ());
-      other.m_front = other.end ();
+      if (empty ())
+      {
+        splice (cend (), std::move (other));
+      }
+      else
+      {
+        auto last = --end ();
+        splice (cend (), std::move (other));
+        erase (begin (), last);
+      }
       return *this;
+    }
+    
+    void assign (size_type count, const value_type& val)
+    {
+      auto it = begin ();
+      for (; it != end () && count != 0; ++it, --count)
+        *it = val;
+      
+      if (count > 0)
+        insert (end (), count, val);
+      else
+        erase (count, end ());
+    }
+    
+    template <typename It>
+    void assign (It first, It last)
+    {
+      It curr = begin ();
+      for (; curr != end () && first != last; ++curr, (void)++first)
+        *curr = *first;
+      
+      if (first == last)
+        erase(curr, end ());
+      else
+        insert(end (), first, last);
+    }
+  
+    void assign (std::initializer_list<value_type> ilist)
+    {
+      assign (ilist.begin (), ilist.end ());
     }
   
     alloc_type get_allocator (void) const noexcept
     {
       return m_container.get_allocator ();
     }
-    
-    // TODO: assign
   
     GCH_NODISCARD iter  begin  (void)       noexcept { return m_front;                            }
     GCH_NODISCARD citer begin  (void) const noexcept { return citer (m_front);                    }
@@ -362,6 +561,11 @@ namespace gch
     GCH_NODISCARD bool empty (void) const noexcept
     {
       return cbegin () == cend ();
+    }
+    
+    GCH_NODISCARD size_type max_size (void) const noexcept
+    {
+      return m_container.max_size ();
     }
     
     void clear (void) noexcept
@@ -467,8 +671,129 @@ namespace gch
       else
         erase (cit, cend ());
     }
+    
+    template <std::size_t M, std::size_t Idx>
+    void swap (partition_subrange<container_type, M, Idx>& other)
+      noexcept (noexcept (std::declval<container_type> ().swap (std::declval<container_type&> ())))
+    {
+      if (&other == this)
+        return;
+      
+      container_type tmp1;
+      container_type tmp2;
+      tmp1.splice (tmp1.cend (), std::move (m_container), cbegin (), cend ());
+      tmp2.splice (tmp2.cend (), std::move (other.m_container), other.cbegin (), other.cend ());
+      tmp1.swap (tmp2);
+      
+      auto new_front1 = tmp1.begin ();
+      auto new_front2 = tmp2.begin ();
+      
+      m_container.splice (cend (), tmp1);
+      absolute_propagate_front (new_front1);
+      
+      other.m_container.splice (cend (), tmp2);
+      other.absolute_propagate_front (new_front2);
+    }
+    
 
-// TODO merge, splice, remove, remove_if, reverse, unique, sort
+    template <std::size_t M, std::size_t Idx, typename ...Args>
+    void merge (partition_subrange<container_type, M, Idx>& other, Args&&... args)
+    {
+      merge (std::move (other), std::forward<Args> (args)...);
+    }
+  
+    template <std::size_t M, std::size_t Idx, typename ...Args>
+    void merge (partition_subrange<container_type, M, Idx>&& other, Args&&... args)
+    {
+      if (&other == this)
+        return;
+      
+      container_type tmp1;
+      container_type tmp2;
+      tmp1.splice (tmp1.cend (), std::move (m_container), cbegin (), cend ());
+      tmp2.splice (tmp2.cend (), std::move (other.m_container), other.cbegin (), other.cend ());
+      tmp1.merge (std::move (tmp2), std::forward<Args> (args)...);
+      auto new_front = tmp1.begin ();
+      m_container.splice (cend (), tmp1);
+      absolute_propagate_front (new_front);
+      other.absolute_propagate_front (other.end ());
+    }
+  
+    template <std::size_t M, std::size_t Idx, typename ...Args>
+    void splice (citer pos, partition_subrange<container_type, M, Idx>& other, Args&&... args)
+    {
+      splice (pos, std::move (other), std::forward<Args> (args)...);
+    }
+  
+    template <std::size_t M, std::size_t Idx>
+    void splice (citer pos, partition_subrange<container_type, M, Idx>&& other)
+    {
+      auto first = other.cbegin ();
+      m_container.splice (pos, std::move (other.m_container), first, other.cend ());
+      propagate_front (pos, first);
+      other.absolute_propagate_front (other.cend ());
+    }
+  
+    template <std::size_t M, std::size_t Idx>
+    void splice (citer pos, partition_subrange<container_type, M, Idx>&& other, citer it)
+    {
+      auto new_other_front = std::next (it);
+      m_container.splice (pos, std::move (other.m_container), it);
+      propagate_front (pos, it);
+      other.propagate_front (it, new_other_front);
+    }
+  
+    template <std::size_t M, std::size_t Idx>
+    void splice (citer pos, partition_subrange<container_type, M, Idx>&& other,
+                 citer first, citer last)
+    {
+      m_container.splice (pos, std::move (other.m_container), first, last);
+      propagate_front (pos, first);
+      other.propagate_front (first, last);
+    }
+    
+    void remove (const value_type& val)
+    {
+      container_type tmp;
+      tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
+      tmp.remove (val);
+      auto new_front = tmp.begin ();
+      m_container.splice (cend (), tmp);
+      absolute_propagate_front (new_front);
+    }
+  
+    template <typename UnaryPredicate>
+    void remove_if (UnaryPredicate&& p)
+    {
+      container_type tmp;
+      tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
+      tmp.remove_if (std::forward<UnaryPredicate> (p));
+      auto new_front = tmp.begin ();
+      m_container.splice (cend (), tmp);
+      absolute_propagate_front (new_front);
+    }
+  
+    template <typename ...Args>
+    void unique (Args&&... args)
+    {
+      container_type tmp;
+      tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
+      tmp.unique (std::forward<Args> (args)...);
+      auto new_front = tmp.begin ();
+      m_container.splice (cend (), tmp);
+      absolute_propagate_front (new_front);
+    }
+  
+    template <typename ...Args>
+    void sort (Args&&... args)
+    {
+      container_type tmp;
+      tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
+      tmp.sort (std::forward<Args> (args)...);
+      auto new_front = tmp.begin ();
+      m_container.splice (cend (), tmp);
+      absolute_propagate_front (new_front);
+    }
     
   private:
   

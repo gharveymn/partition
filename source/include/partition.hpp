@@ -520,6 +520,9 @@ namespace gch
   template <typename Container, std::size_t N>
   class partition_subrange<Container, N, N>
   {
+    template <typename, std::size_t, std::size_t, typename>
+    friend class partition_subrange;
+    
   private:
   public:
     using container_type = Container;
@@ -539,6 +542,14 @@ namespace gch
     : public partition_subrange<Container, N, 0>
   {
   public:
+    
+    partition            (void)                 = default;
+    partition            (const partition&)     = default;
+    partition            (partition&&) noexcept = default;
+    partition& operator= (const partition&)     = default;
+    partition& operator= (partition&&) noexcept = default;
+    ~partition           (void)                 = default;
+    
     template <std::size_t Index>
     partition_subrange<Container, N, Index>& get (void) noexcept
     {
@@ -549,7 +560,7 @@ namespace gch
   template <std::size_t Index, typename Container, std::size_t N>
   partition_subrange<Container, N, Index>& get (partition<Container, N>& p)
   {
-    return p.template get<Index> ();
+    return static_cast<partition_subrange<Container, N, Index>&> (p);
   }
   
 }
