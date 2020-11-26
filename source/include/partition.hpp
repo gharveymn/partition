@@ -514,95 +514,7 @@ namespace gch
   class partition;
   
   template <typename Container, std::size_t N, std::size_t Index, typename Enable = void>
-  class partition_subrange_impl;
-  
-  template <typename Container, std::size_t N, std::size_t Index, typename Enable = void>
   class partition_subrange;
-  
-  template <typename Container, std::size_t N, std::size_t Index>
-  class partition_subrange<Container, N, Index,
-                           typename std::enable_if<Index < N>::type>
-    : private partition_subrange<Container, N, Index + 1>,
-      public partition_subrange_impl<Container, N, Index>
-  {
-    friend partition_subrange_impl<Container, N, Index>;
-    friend partition<Container, N>;
-    
-  protected:
-    using impl_type = partition_subrange_impl<Container, N, Index>;
-    using next_type = partition_subrange<Container, N, Index + 1>;
-  
-    using next_type::m_container;
-  
-  public:
-    using iter       = typename Container::iterator;
-    using citer      = typename Container::const_iterator;
-    using riter      = typename Container::reverse_iterator;
-    using criter     = typename Container::const_reverse_iterator;
-    using ref        = typename Container::reference;
-    using cref       = typename Container::const_reference;
-    using size_type  = typename Container::size_type;
-    using value_type = typename Container::value_type;
-    using alloc_type = typename Container::value_type;
-    
-    using impl_type::emplace;
-    using impl_type::emplace_front;
-    using impl_type::emplace_back;
-    using impl_type::insert;
-    
-//  partition_subrange            (void)                          = impl;
-//  partition_subrange            (const partition_subrange&)     = default;
-    partition_subrange            (partition_subrange&&) noexcept = default;
-//  partition_subrange& operator= (const partition_subrange&)     = impl;
-//  partition_subrange& operator= (partition_subrange&&) noexcept = impl;
-    ~partition_subrange           (void)                          = default;
-    
-    partition_subrange (void)
-      : next_type (),
-        impl_type (m_container.end ())
-    { }
-    
-    alloc_type get_allocator (void) const noexcept
-    {
-      return m_container.get_allocator ();
-    }
-  
-    using impl_type::begin;
-    using impl_type::cbegin;
-  
-    iter   end     (void)       noexcept { return next_type::begin ();                            }
-    citer  end     (void) const noexcept { return next_type::cbegin ();                           }
-    citer  cend    (void) const noexcept { return next_type::cbegin ();                           }
-  
-    riter  rbegin  (void)       noexcept { return riter (end ());                                 }
-    criter rbegin  (void) const noexcept { return criter (cend ());                               }
-    criter crbegin (void) const noexcept { return criter (cend ());                               }
-  
-    riter  rend    (void)       noexcept { return riter (begin ());                               }
-    criter rend    (void) const noexcept { return criter (cbegin ());                             }
-    criter crend   (void) const noexcept { return criter (cbegin ());                             }
-  
-    GCH_NODISCARD GCH_CPP14_CONSTEXPR ref&   front   (void)       noexcept { return *begin ();    }
-    GCH_NODISCARD constexpr           cref&  front   (void) const noexcept { return *begin ();    }
-    
-    GCH_NODISCARD GCH_CPP14_CONSTEXPR ref&   back    (void)       noexcept { return *(--end ());  }
-    GCH_NODISCARD constexpr           cref&  back    (void) const noexcept { return *(--cend ()); }
-    
-    GCH_NODISCARD std::size_t size (void) const noexcept
-    {
-      return std::distance (cbegin (), cend ());
-    }
-    
-    GCH_NODISCARD bool empty (void) const noexcept
-    {
-      return cbegin () == cend ();
-    }
-    
-    void swap (partition_subrange& other) = delete;
-    
-  protected:
-  private:
-  };
   
   // end case holds the actual container
   template <typename Container, std::size_t N>
@@ -610,24 +522,21 @@ namespace gch
   {
   private:
   public:
-    using iter    = typename Container::iterator;
-    using citer   = typename Container::const_iterator;
-    using riter   = typename Container::reverse_iterator;
-    using criter  = typename Container::const_reverse_iterator;
-    using ref     = typename Container::reference;
-    using cref    = typename Container::const_reference;
+    using container_type = Container;
+    using iter           = typename container_type::iterator;
+    using citer          = typename container_type::const_iterator;
   
     iter  begin  (void)       noexcept { return m_container.end ();  }
     citer begin  (void) const noexcept { return m_container.cend (); }
     citer cbegin (void) const noexcept { return m_container.cend (); }
     
   protected:
-    Container m_container;
+    container_type m_container;
   };
   
   template <typename Container, std::size_t N>
   class partition
-    : protected partition_subrange<Container, N, 0>
+    : public partition_subrange<Container, N, 0>
   {
   public:
     template <std::size_t Index>

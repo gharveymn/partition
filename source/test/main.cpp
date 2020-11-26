@@ -251,9 +251,16 @@ void do_test_partition_view (void)
 }
 
 template <std::size_t idx, typename Container, std::size_t N>
-void print_subrange (gch::partition<Container, N>& p)
+typename std::enable_if<(idx == N)>::type print_subrange (gch::partition<Container, N>& p)
+{
+  std::cout << std::endl;
+}
+
+template <std::size_t idx, typename Container, std::size_t N>
+typename std::enable_if<(idx < N)>::type print_subrange (gch::partition<Container, N>& p)
 {
   auto& r = gch::get<idx> (p);
+  std::cout << "[ ";
   if (! r.empty ())
   {
     std::cout << r.front ();
@@ -263,9 +270,8 @@ void print_subrange (gch::partition<Container, N>& p)
                      std::cout << ", " << x;
                    });
   }
-  std::cout << std::endl;
-  if constexpr (idx < N - 1)
-    print_subrange<idx + 1, Container, N> (p);
+  std::cout << " ]" << std::endl;
+  print_subrange<idx + 1, Container, N> (p);
 }
 
 template <typename Container, std::size_t N>
@@ -282,9 +288,19 @@ void do_test_list_partition (void)
   auto& r3 = gch::get<2> (x);
   
   r1.emplace_back (1);
-  
   print_partition (x);
   
+  r1.emplace_back (3);
+  print_partition (x);
+  
+  r3.emplace_back (7);
+  print_partition (x);
+  
+  r3.emplace_back (9);
+  print_partition (x);
+  
+  r2.emplace_back (17);
+  print_partition (x);
   
 }
 
