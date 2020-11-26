@@ -8,10 +8,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <partition.hpp>
+#include <list_partition.hpp>
 
 #include <algorithm>
 #include <iostream>
 #include <list>
+#include <tuple>
 
 class test_subrange
 {
@@ -242,10 +244,47 @@ S do_test_subrange (S&& s)
   return s;
 }
 
-void do_test_partition (void)
+void do_test_partition_view (void)
 {
   test_partition p1;
   test_partition p2 (0);
+}
+
+template <std::size_t idx, typename Container, std::size_t N>
+void print_subrange (gch::partition<Container, N>& p)
+{
+  auto& r = gch::get<idx> (p);
+  if (! r.empty ())
+  {
+    std::cout << r.front ();
+    std::for_each (++r.begin (), r.end (),
+                   [] (int x)
+                   {
+                     std::cout << ", " << x;
+                   });
+  }
+  std::cout << std::endl;
+  if constexpr (idx < N - 1)
+    print_subrange<idx + 1, Container, N> (p);
+}
+
+template <typename Container, std::size_t N>
+void print_partition (gch::partition<Container, N>& p)
+{
+  print_subrange<0> (p);
+}
+
+void do_test_list_partition (void)
+{
+  gch::partition<std::list<int>, 3> x;
+  auto& r1 = gch::get<0> (x);
+  auto& r2 = gch::get<1> (x);
+  auto& r3 = gch::get<2> (x);
+  
+  r1.emplace_back (1);
+  
+  print_partition (x);
+  
   
 }
 
@@ -253,5 +292,6 @@ int main (void)
 {
   auto s1 = do_test_subrange (test_subrange ());
   auto s2 = do_test_subrange (test_partition ());
+  do_test_list_partition ();
   return 0;
 }

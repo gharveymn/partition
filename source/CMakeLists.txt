@@ -6,7 +6,8 @@ ENDIF()
 
 CREATE_PACKAGE(AUTHOR       gharveymn
                NAME         partition
-               HEADERS      partition.hpp)
+               HEADERS      partition.hpp
+                            list_partition.hpp)
 
 # Only include tests if we are at the top level
 IF(PARTITION_BUILD_TESTS)
