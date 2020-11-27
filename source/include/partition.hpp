@@ -449,7 +449,7 @@ namespace gch
   public:
     using partition_type     = Partition;
     using container_type     = typename partition_type::container_type;
-    using subrange_view_type = decltype (std::declval<partition_type> ().template get_subrange_view<0> ());
+    using subrange_view_type = decltype (std::declval<partition_type> ().template subrange_view<0> ());
     using view_array         = std::array<subrange_view_type, N>;
     using nonconst_partition = typename std::add_const<Partition>::type;
     
@@ -645,7 +645,7 @@ namespace gch
     typename std::enable_if<(Index < partition_type::size ())>::type
     init_views (partition_type& p)
     {
-      m_subrange_views[Index] = p.template get_subrange_view<Index> ();
+      m_subrange_views[Index] = p.template subrange_view<Index> ();
       init_views<Index + 1> (p);
     }
   
@@ -821,6 +821,9 @@ namespace gch
   {
     lhs.swap (rhs);
   }
+  
+  template <typename Partition, std::size_t N>
+  using const_partition_view = partition_view<const Partition, N>;
   
   template <typename Partition>
   class partition_size

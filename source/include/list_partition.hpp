@@ -1030,6 +1030,12 @@ namespace gch
     using value_type     = typename container_type::value_type;
     using alloc_type     = typename container_type::value_type;
     
+  protected:
+    
+    using list_partition_subrange<Container, N, 0>::m_container;
+    
+  public:
+    
     list_partition            (void)                      = default;
     list_partition            (const list_partition&)     = default;
     list_partition            (list_partition&&) noexcept = default;
@@ -1041,6 +1047,18 @@ namespace gch
     using subrange_type = list_partition_subrange<Container, N, Index>;
     
     static constexpr std::size_t size (void) noexcept { return N; }
+  
+    template <std::size_t Idx>
+    gch::subrange_view<iter> data_view (void)
+    {
+      return { m_container.begin (), m_container.end () };
+    }
+  
+    template <std::size_t Idx>
+    gch::subrange_view<citer> data_view (void) const
+    {
+      return { m_container.begin (), m_container.end () };
+    }
     
     partition_view<list_partition, N> view (void)
     {
@@ -1053,46 +1071,70 @@ namespace gch
     }
     
     template <std::size_t Idx>
-    subrange_view<iter> get_subrange_view (void)
+    gch::subrange_view<iter> subrange_view (void)
     {
-      return get<Idx> (*this).view ();
+      return subrange<Idx> ().view ();
     }
   
     template <std::size_t Idx>
-    subrange_view<citer> get_subrange_view (void) const
+    gch::subrange_view<citer> subrange_view (void) const
     {
-      return get<Idx> (*this).view ();
+      return subrange<Idx> ().view ();
+    }
+  
+    template <std::size_t Index>
+    constexpr list_partition_subrange<Container, N, Index>& subrange (void) & noexcept
+    {
+      return static_cast<list_partition_subrange<Container, N, Index>&> (*this);
+    }
+  
+    template <std::size_t Index>
+    constexpr list_partition_subrange<Container, N, Index>&& subrange (void) && noexcept
+    {
+      return static_cast<list_partition_subrange<Container, N, Index>&&> (*this);
+    }
+  
+    template <std::size_t Index>
+    constexpr const list_partition_subrange<Container, N, Index>& subrange (void) const& noexcept
+    {
+      return static_cast<const list_partition_subrange<Container, N, Index>&> (*this);
+    }
+  
+    template <std::size_t Index>
+    constexpr const list_partition_subrange<Container, N, Index>&& subrange (void) const&& noexcept
+    {
+      return static_cast<const list_partition_subrange<Container, N, Index>&&> (*this);
     }
     
   private:
   };
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr list_partition_subrange<Container, N, Index>&
-  get (list_partition<T, N, Container>& p) noexcept
+  constexpr auto get (list_partition<T, N, Container>& p) noexcept
+    -> decltype (p.template subrange<Index> ())
   {
-    return static_cast<list_partition_subrange<Container, N, Index>&> (p);
+    return p.template subrange<Index> ();
   }
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr list_partition_subrange<Container, N, Index>&&
-  get (list_partition<T, N, Container>&& p) noexcept
+  constexpr auto get (list_partition<T, N, Container>&& p) noexcept
+    -> decltype (p.template subrange<Index> ())
   {
-    return static_cast<list_partition_subrange<Container, N, Index>&&> (p);
+    return p.template subrange<Index> ();
   }
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr const list_partition_subrange<Container, N, Index>&
-  get (const list_partition<T, N, Container>& p) noexcept
+  constexpr auto get (const list_partition<T, N, Container>& p) noexcept
+    -> decltype (p.template subrange<Index> ())
   {
-    return static_cast<const list_partition_subrange<Container, N, Index>&> (p);
+    return p.template subrange<Index> ();
   }
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr const list_partition_subrange<Container, N, Index>&&
-  get (const list_partition<T, N, Container>&& p) noexcept
+  constexpr auto get (const list_partition<T, N, Container>&& p) noexcept
+    -> decltype (p.template subrange<Index> ())
   {
-    return static_cast<const list_partition_subrange<Container, N, Index>&&> (p);
+    return p.template subrange<Index> ();
   }
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>
