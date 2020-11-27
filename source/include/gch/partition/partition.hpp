@@ -7,12 +7,11 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef PARTITION_PARTITION_HPP
-#define PARTITION_PARTITION_HPP
+#ifndef GCH_PARTITION_PARTITION_HPP
+#define GCH_PARTITION_PARTITION_HPP
 
 #include <array>
 #include <functional>
-#include <vector>
 
 #ifndef GCH_CPP14_CONSTEXPR
 #  if __cpp_constexpr >= 201304L

@@ -7,10 +7,10 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef PARTITION_LIST_PARTITION_HPP
-#define PARTITION_LIST_PARTITION_HPP
+#ifndef GCH_PARTITION_LIST_PARTITION_HPP
+#define GCH_PARTITION_LIST_PARTITION_HPP
 
-#include <partition.hpp>
+#include "partition.hpp"
 
 #include <list>
 
@@ -94,6 +94,8 @@ namespace gch
     using size_type  = typename container_type::size_type;
     using value_type = typename container_type::value_type;
     using alloc_type = typename container_type::value_type;
+  
+    using next_type::num_subranges;
   
 //  list_partition_subrange            (void)                               = impl;
 //  list_partition_subrange            (const list_partition_subrange&)     = impl;
@@ -503,7 +505,6 @@ namespace gch
     using next_type::m_container;
   
   public:
-    
     using iter       = typename container_type::iterator;
     using citer      = typename container_type::const_iterator;
     using riter      = typename container_type::reverse_iterator;
@@ -514,6 +515,8 @@ namespace gch
     using value_type = typename container_type::value_type;
     using alloc_type = typename container_type::value_type;
     
+    using next_type::num_subranges;
+    
 //  list_partition_subrange            (void)                               = impl;
 //  list_partition_subrange            (const list_partition_subrange&)     = impl;
 //  list_partition_subrange            (list_partition_subrange&&) noexcept = impl;
@@ -522,7 +525,6 @@ namespace gch
     ~list_partition_subrange           (void)                               = default;
 
   protected:
-    
     list_partition_subrange (void)
       : next_type (),
         m_first (m_container.end ())
@@ -1016,8 +1018,9 @@ namespace gch
 
   template <typename T, std::size_t N, typename Container>
   class list_partition
-    : public list_partition_subrange<Container, N, 0>
+    : protected list_partition_subrange<Container, N, 0>
   {
+    using base_type = list_partition_subrange<Container, N, 0>;
   public:
     using container_type = Container;
     using iter           = typename container_type::iterator;
@@ -1047,27 +1050,27 @@ namespace gch
     using subrange_type = list_partition_subrange<Container, N, Index>;
     
     static constexpr std::size_t size (void) noexcept { return N; }
+    
+    using base_type::num_subranges;
   
-    template <std::size_t Idx>
     gch::subrange_view<iter> data_view (void)
     {
       return { m_container.begin (), m_container.end () };
     }
   
-    template <std::size_t Idx>
     gch::subrange_view<citer> data_view (void) const
     {
       return { m_container.begin (), m_container.end () };
     }
-    
-    partition_view<list_partition, N> view (void)
+  
+    gch::partition_view<list_partition, N> partition_view (void)
     {
-      return partition_view<list_partition, N> (*this);
+      return gch::partition_view<list_partition, N> (*this);
     }
   
-    partition_view<const list_partition, N> view (void) const
+    gch::partition_view<const list_partition, N> partition_view (void) const
     {
-      return partition_view<const list_partition, N> (*this);
+      return gch::partition_view<const list_partition, N> (*this);
     }
     
     template <std::size_t Idx>
@@ -1083,13 +1086,13 @@ namespace gch
     }
   
     template <std::size_t Index>
-    constexpr list_partition_subrange<Container, N, Index>& subrange (void) & noexcept
+    GCH_CPP14_CONSTEXPR list_partition_subrange<Container, N, Index>& subrange (void) & noexcept
     {
       return static_cast<list_partition_subrange<Container, N, Index>&> (*this);
     }
   
     template <std::size_t Index>
-    constexpr list_partition_subrange<Container, N, Index>&& subrange (void) && noexcept
+    GCH_CPP14_CONSTEXPR list_partition_subrange<Container, N, Index>&& subrange (void) && noexcept
     {
       return static_cast<list_partition_subrange<Container, N, Index>&&> (*this);
     }

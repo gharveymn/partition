@@ -7,7 +7,7 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <list_partition.hpp>
+#include <gch/partition/list_partition.hpp>
 #include <cassert>
 
 int main(int, char**)

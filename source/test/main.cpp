@@ -7,8 +7,8 @@
  * of the MIT license. See the LICENSE file for details.
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <partition.hpp>
-#include <list_partition.hpp>
+#include <gch/partition/partition.hpp>
+#include <gch/partition/list_partition.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -319,11 +319,11 @@ void do_test_list_partition (void)
   r2.emplace_back (17);
   print_partition (x);
   
-  auto pv = x.view ();
+  auto pv = x.partition_view ();
   print_view (pv);
   
   const auto& y = x;
-  auto cpv = y.view ();
+  auto cpv = y.partition_view ();
   print_view (cpv);
   
 }
