@@ -24,8 +24,8 @@ public:
   using citer  = typename list::const_iterator;
   using riter  = typename list::reverse_iterator;
   using criter = typename list::const_reverse_iterator;
-  using ref  = typename list::reference;
-  using cref = typename list::const_reference;
+  using ref    = typename list::reference;
+  using cref   = typename list::const_reference;
   
   [[nodiscard]] iter   begin   (void)       noexcept { return m_data.begin ();   }
   [[nodiscard]] citer  begin   (void) const noexcept { return m_data.begin ();   }
@@ -214,7 +214,7 @@ public:
 private:
   std::list<int> m_data;
   std::list<int>::iterator m_pivot;
-  gch::partition_view<std::list<int>, 2> m_partition;
+  gch::dependent_partition_view<std::list<int>, 2> m_partition;
   
 };
 
@@ -250,16 +250,16 @@ void do_test_partition_view (void)
   test_partition p2 (0);
 }
 
-template <std::size_t idx, typename Container, std::size_t N>
-typename std::enable_if<(idx == N)>::type print_subrange (gch::partition<Container, N>& p)
+template <std::size_t idx, typename T, std::size_t N, typename Container>
+typename std::enable_if<(idx == N)>::type print_subrange (gch::list_partition<T, N, Container>& p)
 {
   std::cout << std::endl;
 }
 
-template <std::size_t idx, typename Container, std::size_t N>
-typename std::enable_if<(idx < N)>::type print_subrange (gch::partition<Container, N>& p)
+template <std::size_t idx, typename T, std::size_t N, typename Container>
+typename std::enable_if<(idx < N)>::type print_subrange (gch::list_partition<T, N, Container>& p)
 {
-  auto& r = gch::get<idx> (p);
+  gch::list_partition_subrange<Container, N, idx>& r = gch::get<idx> (p);
   std::cout << "[ ";
   if (! r.empty ())
   {
@@ -271,18 +271,35 @@ typename std::enable_if<(idx < N)>::type print_subrange (gch::partition<Containe
                    });
   }
   std::cout << " ]" << std::endl;
-  print_subrange<idx + 1, Container, N> (p);
+  print_subrange<idx + 1, T, N, Container> (p);
 }
 
-template <typename Container, std::size_t N>
-void print_partition (gch::partition<Container, N>& p)
+template <typename T, std::size_t N, typename Container>
+void print_partition (gch::list_partition<T, N, Container>& p)
 {
   print_subrange<0> (p);
 }
 
+template <typename View>
+void print_view (const View& v)
+{
+  for (auto&& s : v)
+  {
+    std::cout << "[ ";
+    if (!s.empty ())
+    {
+      std::cout << s.front ();
+      for (auto it = ++s.begin (); it != s.end (); ++it)
+        std::cout << ", " << *it;
+    }
+    std::cout << " ]" << std::endl;
+  }
+  std::cout << std::endl;
+}
+
 void do_test_list_partition (void)
 {
-  gch::partition<std::list<int>, 3> x;
+  gch::list_partition<int, 3> x;
   auto& r1 = gch::get<0> (x);
   auto& r2 = gch::get<1> (x);
   auto& r3 = gch::get<2> (x);
@@ -301,6 +318,13 @@ void do_test_list_partition (void)
   
   r2.emplace_back (17);
   print_partition (x);
+  
+  auto pv = x.view ();
+  print_view (pv);
+  
+  const auto& y = x;
+  auto cpv = y.view ();
+  print_view (cpv);
   
 }
 
