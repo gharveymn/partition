@@ -13,6 +13,17 @@
 #include <array>
 #include <functional>
 
+#if __cplusplus >= 201703L
+#  if __has_include(<variant>)
+#    include <variant>
+#    if __cpp_lib_variant >= 201606L
+#      ifndef GCH_HAS_VARIANT
+#        define GCH_HAS_VARIANT
+#      endif
+#    endif
+#  endif
+#endif
+
 #ifndef GCH_CPP14_CONSTEXPR
 #  if __cpp_constexpr >= 201304L
 #    define GCH_CPP14_CONSTEXPR constexpr
@@ -695,13 +706,15 @@ namespace gch
   }
   
   template <typename Container>
-  constexpr bool operator== (const subrange<Container>& lhs, const subrange<Container>& rhs)
+  constexpr bool operator== (const dependent_subrange<Container>& lhs,
+                             const dependent_subrange<Container>& rhs)
   {
     return std::equal (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
   }
   
   template <typename Container>
-  constexpr auto operator<=> (const subrange<Container>& lhs, const subrange<Container>& rhs)
+  constexpr auto operator<=> (const dependent_subrange<Container>& lhs,
+                              const dependent_subrange<Container>& rhs)
   {
     return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
                                                    rhs.begin (), rhs.end (),
@@ -824,19 +837,412 @@ namespace gch
   template <typename Partition, std::size_t N>
   using const_partition_view = partition_view<const Partition, N>;
   
+  namespace detail
+  {
+    template <typename DecayedPartition>
+    struct partition_size_impl
+      : std::integral_constant<std::size_t, DecayedPartition::num_subranges ()>
+    { };
+  
+    template <std::size_t Index, typename DecayedPartition>
+    struct partition_element_impl
+    {
+      using type = typename DecayedPartition::template subrange_type<Index>;
+    };
+  }
+  
   template <typename Partition>
-  class partition_size
-    : public std::integral_constant<std::size_t, Partition::num_subranges ()>
+  struct partition_size
+    : detail::partition_size_impl<typename std::decay<Partition>::type>
   { };
   
   template <std::size_t Index, typename Partition>
-  class partition_element
-  {
-    using type = typename Partition::template subrange_type<Index>;
-  };
+  struct partition_element
+    : detail::partition_element_impl<Index, typename std::decay<Partition>::type>
+  { };
   
   template <std::size_t Index, typename Partition>
   using partition_element_t = typename partition_element<Index, Partition>::type;
+  
+  namespace detail
+  {
+    template <std::size_t Accum, typename ...Partitions>
+    struct total_subranges_impl;
+  
+    template <std::size_t Accum>
+    struct total_subranges_impl<Accum>
+      : std::integral_constant<std::size_t, Accum>
+    { };
+  
+    template <std::size_t Accum, typename Partition, typename ...Partitions>
+    struct total_subranges_impl<Accum, Partition, Partitions...>
+      : total_subranges_impl<Accum + partition_size<Partition>::value, Partitions...>
+    { };
+  
+    template <typename Void, typename ...Partitions>
+    struct partition_container_type_impl
+    { };
+  
+    template <typename Partition>
+    struct partition_container_type_impl<void, Partition>
+    {
+      using type = typename Partition::container_type;
+    };
+  
+    template <typename Partition, typename ...Partitions>
+    struct partition_container_type_impl<
+      typename std::enable_if<std::is_same<typename Partition::container_type,
+        typename partition_container_type_impl<void, Partitions...>::type>::value>::type,
+      Partition, Partitions...>
+      : partition_container_type_impl<void, Partitions...>
+    { };
+  
+    template <typename Void, typename ...Partitions>
+    struct partition_data_type_impl
+    { };
+  
+    template <typename Partition>
+    struct partition_data_type_impl<void, Partition>
+    {
+      using type = typename Partition::data_type;
+    };
+  
+    template <typename Partition, typename ...Partitions>
+    struct partition_data_type_impl<
+      typename std::enable_if<std::is_same<typename Partition::data_type,
+        typename partition_data_type_impl<void, Partitions...>::type>::value>::type,
+      Partition, Partitions...>
+      : partition_data_type_impl<void, Partitions...>
+    { };
+  
+    template <std::size_t M, typename Partition>
+    struct partition_resized_type_impl;
+    
+    template <std::size_t M, typename T, std::size_t N, typename Container,
+              template <typename, std::size_t, typename> class PartitionT>
+    struct partition_resized_type_impl<M, PartitionT<T, N, Container>>
+    {
+      using type = PartitionT<T, M, Container>;
+    };
+  
+    template <typename ...Partitions>
+    struct partition_cat_type_impl;
+  
+    template <typename Partition, typename ...Partitions>
+    struct partition_cat_type_impl<Partition, Partitions...>
+      : partition_resized_type_impl<total_subranges_impl<0, Partition, Partitions...>::value,
+                                    Partition>
+    { };
+    
+  };
+  
+  template <typename ...Partitions>
+  struct total_subranges
+    : detail::total_subranges_impl<0, typename std::decay<Partitions>::type...>
+  { };
+  
+  template <typename ...Partitions>
+  struct partition_container_type
+    : detail::partition_container_type_impl<void, typename std::decay<Partitions>::type...>
+  { };
+  
+  template <typename ...Partitions>
+  struct partition_data_type
+    : detail::partition_data_type_impl<void, typename std::decay<Partitions>::type...>
+  { };
+  
+  template <std::size_t M, typename Partition>
+  struct partition_resized_type
+    : detail::partition_resized_type_impl<M, typename std::decay<Partition>::type>
+  { };
+  
+  template <typename ...Partitions>
+  struct partition_cat_type
+    : detail::partition_cat_type_impl<typename std::decay<Partitions>::type...>
+  { };
+  
+  template <typename ...Partitions>
+  using partition_container_type_t = typename partition_container_type<Partitions...>::type;
+  
+  template <typename ...Partitions>
+  using partition_data_type_t = typename partition_data_type<Partitions...>::type;
+  
+  template <std::size_t M, typename Partition>
+  using partition_resized_type_t = typename partition_resized_type<M, Partition>::type;
+  
+  template <typename ...Partitions>
+  using partition_cat_type_t = typename partition_cat_type<Partitions...>::type;
+  
+  template <typename ...Partitions>
+  partition_cat_type_t<Partitions...> partition_cat (Partitions&&... ps)
+  {
+    return { std::forward<Partitions> (ps)... };
+  }
+  
+  template <std::size_t Index, typename Partition>
+  constexpr partition_element_t<Index, Partition>&
+  get_subrange (Partition& p) noexcept
+  {
+    return static_cast<partition_element_t<Index, Partition>&> (p);
+  }
+  
+  template <std::size_t Index, typename Partition>
+  constexpr const partition_element_t<Index, Partition>&
+  get_subrange (const Partition& p) noexcept
+  {
+    return static_cast<const partition_element_t<Index, Partition>&> (p);
+  }
+  
+  template <std::size_t Index, typename Partition>
+  constexpr partition_element_t<Index, Partition>&&
+  get_subrange (Partition&& p) noexcept
+  {
+    return static_cast<partition_element_t<Index, Partition>&&> (p);
+  }
+  
+  template <std::size_t Index, typename Partition>
+  constexpr const partition_element_t<Index, Partition>&&
+  get_subrange (const Partition&& p) noexcept
+  {
+    return static_cast<const partition_element_t<Index, Partition>&&> (p);
+  }
+
+#ifdef GCH_PARTITION_ITERATOR
+
+#  define GCH_PARTITION_ITERATOR
+  
+  template <typename Partition>
+  class partition_iterator
+  {
+    template <typename IndexSequence>
+    struct find_variant;
+    
+    template <std::size_t ...Indices>
+    struct find_variant<std::index_sequence<Indices...>>
+    {
+      using type = std::variant<std::reference_wrapper<
+        typename Partition::template subrange_type<Indices>>...>;
+    };
+  
+  public:
+    
+    using subrange_indices = std::make_index_sequence<Partition::size ()>;
+    using variant_subrange = typename find_variant<subrange_indices>::type;
+    
+    partition_iterator            (void)                          = default;
+    partition_iterator            (const partition_iterator&)     = default;
+    partition_iterator            (partition_iterator&&) noexcept = default;
+    partition_iterator& operator= (const partition_iterator&)     = default;
+    partition_iterator& operator= (partition_iterator&&) noexcept = default;
+    ~partition_iterator           (void)                          = default;
+    
+    constexpr partition_iterator (Partition& p, std::size_t idx)
+      : m_partition (&p),
+        m_idx (idx)
+    { }
+    
+    template <typename NonConst,
+              typename = std::enable_if_t<
+                std::is_same<std::remove_const_t<Partition>, NonConst>::value>>
+    constexpr /* implicit */ partition_iterator (const partition_iterator<NonConst>& other) noexcept
+      : m_partition (other.m_partition),
+        m_idx (other.m_idx)
+    { }
+    
+    template <typename NonConst,
+              typename = std::enable_if_t<
+                std::is_same<std::remove_const_t<Partition>, NonConst>::value>>
+    partition_iterator& operator= (const partition_iterator<NonConst>& other) noexcept
+    {
+      m_partition = other.m_partition;
+      m_idx = other.m_idx;
+      return *this;
+    }
+    
+    friend partition_iterator<std::add_const_t<Partition>>;
+    
+    partition_iterator& operator++ (void)
+    {
+      ++m_idx;
+      return *this;
+    }
+    
+    partition_iterator& operator++ (int)
+    {
+      partition_iterator tmp = *this;
+      ++m_idx;
+      return *this;
+    }
+    
+    partition_iterator& operator-- (void)
+    {
+      --m_idx;
+      return *this;
+    }
+    
+    partition_iterator& operator-- (int)
+    {
+      partition_iterator tmp = *this;
+      --m_idx;
+      return *this;
+    }
+    
+    constexpr bool operator== (const partition_iterator& other) const
+    {
+      return m_partition == other.m_partition && m_idx == other.m_idx;
+    }
+    
+    constexpr bool operator!= (const partition_iterator& other) const {
+      return ! operator== (other);
+    }
+    
+    constexpr variant_subrange operator* (void) const
+    {
+      return cast_subrange (*m_partition, m_idx);
+    }
+  
+  private:
+    
+    template <typename IndexSequence>
+    struct subrange_map;
+    
+    template <std::size_t ...Indices>
+    struct subrange_map<std::index_sequence<Indices...>>
+    {
+      template <std::size_t Index>
+      static constexpr variant_subrange make_variant (Partition& p)
+      {
+        return std::ref (get_subrange<Index> (p));
+      }
+      
+      using variant_functor = variant_subrange (*) (Partition&);
+      static constexpr auto size = sizeof...(Indices);
+      
+      static constexpr std::array<variant_functor, size>
+        variant_functor_map = { &make_variant<Indices>... };
+    };
+    
+    static constexpr variant_subrange cast_subrange (Partition& p, std::size_t idx)
+    {
+      return subrange_map<subrange_indices>::variant_functor_map[idx] (p);
+    }
+    
+    Partition * m_partition;
+    std::size_t m_idx;
+  };
+  
+  namespace detail
+  {
+    
+    template <typename ...Fs>
+    struct overload_wrapper : Fs ...
+    {
+      template <typename ...Ts,
+                typename = std::enable_if_t<std::conjunction_v<
+                  std::is_same<std::decay_t<Ts>, Fs>...>>>
+      constexpr overload_wrapper (Ts&& ... fs) noexcept
+        : Fs (std::forward<Ts> (fs))...
+      { }
+      
+      template <typename T>
+      constexpr auto call (T&& t)
+      {
+        return operator() (std::forward<T> (t));
+      }
+      
+      using Fs::operator()...;
+    };
+    
+    template <typename Partition, typename Derived, std::size_t Idx>
+    struct subrange_overload;
+    
+    template <typename Partition, template <typename...> class DerivedT,
+      std::size_t Idx, typename ...Fs>
+    struct subrange_overload<Partition, DerivedT<Fs...>, Idx>
+    {
+      using derived_type = DerivedT<Fs...>;
+      using subrange_type = typename Partition::template subrange_type<Idx>;
+      
+      constexpr auto operator() (std::reference_wrapper<subrange_type>& r)
+      {
+        return wrapper_cast (this)->call (r.get ());
+      }
+      
+      constexpr auto operator() (std::reference_wrapper<subrange_type>&& r)
+      {
+        return wrapper_cast (this)->call (r.get ());
+      }
+      
+      constexpr auto operator() (const std::reference_wrapper<subrange_type>& r)
+      {
+        return wrapper_cast (this)->call (r.get ());
+      }
+      
+      constexpr auto operator() (const std::reference_wrapper<subrange_type>&& r)
+      {
+        return wrapper_cast (this)->call (r.get ());
+      }
+      
+      static constexpr auto up_cast (subrange_overload* ptr)
+      {
+        return static_cast<derived_type *> (ptr);
+      }
+      
+      static constexpr auto up_cast (const subrange_overload* ptr)
+      {
+        return static_cast<const derived_type *> (ptr);
+      }
+      
+      static constexpr auto wrapper_cast (subrange_overload* ptr)
+      {
+        return static_cast<typename derived_type::wrapper_type *> (up_cast (ptr));
+      }
+      
+      static constexpr auto wrapper_cast (const subrange_overload* ptr)
+      {
+        return static_cast<const typename derived_type::wrapper_type *> (up_cast (ptr));
+      }
+    };
+    
+    
+    template <typename Partition, typename Derived, typename IndexSequence>
+    struct partition_overload_impl;
+    
+    template <typename Partition, typename Derived, std::size_t ...Indices>
+    struct partition_overload_impl<Partition, Derived, std::index_sequence<Indices...>>
+      : subrange_overload<Partition, Derived, Indices>...
+    {
+      using subrange_overload<Partition, Derived, Indices>::operator()...;
+    };
+    
+  }
+  
+  template <typename Partition, typename ...Fs>
+  struct partition_overloader
+    : detail::overload_wrapper<Fs>...,
+      detail::partition_overload_impl<Partition, partition_overloader<Partition, Fs...>,
+                                      std::make_index_sequence<Partition::size ()>>
+  {
+    using detail::overload_wrapper<Fs...>::overload_wrapper;
+    using wrapper_type = detail::overload_wrapper<Fs...>;
+  };
+  
+  template <typename Partition, typename ...Fs,
+            typename = std::enable_if_t<std::conjunction_v<
+              std::negation<std::is_same<std::decay_t<Fs>, Partition>>...>>>
+  constexpr auto partition_overload (Fs&&... fs)
+  {
+    return partition_overloader<Partition, std::decay_t<Fs>...> (std::forward<Fs> (fs)...);
+  }
+  
+  template <typename Partition, typename ...Fs>
+  constexpr auto partition_overload (const Partition&, Fs&&... fs)
+  {
+    return partition_overloader<Partition, std::decay_t<Fs>...> (std::forward<Fs> (fs)...);
+  }
+
+#endif
+  
 };
 
 namespace std

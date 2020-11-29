@@ -15,6 +15,8 @@
 #include <list>
 #include <tuple>
 
+using namespace gch;
+
 class test_subrange
 {
 public:
@@ -105,17 +107,17 @@ public:
     std::cout << std::endl;
   }
   
-  gch::dependent_subrange<std::list<int>>& get_phi (void) { return m_phi_range; }
-  const gch::dependent_subrange<std::list<int>>& get_phi (void) const { return m_phi_range; }
+  dependent_subrange<std::list<int>>& get_phi (void) { return m_phi_range; }
+  const dependent_subrange<std::list<int>>& get_phi (void) const { return m_phi_range; }
   
-  gch::dependent_subrange<std::list<int>>& get_body (void) { return m_body_range; }
-  const gch::dependent_subrange<std::list<int>>& get_body (void) const { return m_body_range; }
+  dependent_subrange<std::list<int>>& get_body (void) { return m_body_range; }
+  const dependent_subrange<std::list<int>>& get_body (void) const { return m_body_range; }
 
 private:
   std::list<int> m_data;
   std::list<int>::iterator m_pivot;
-  gch::dependent_subrange<std::list<int>> m_phi_range;
-  gch::dependent_subrange<std::list<int>> m_body_range;
+  dependent_subrange<std::list<int>> m_phi_range;
+  dependent_subrange<std::list<int>> m_body_range;
   
 };
 
@@ -205,16 +207,16 @@ public:
     std::cout << std::endl;
   }
   
-  gch::dependent_subrange<std::list<int>>& get_phi (void) { return gch::get<0> (m_partition); }
-  const gch::dependent_subrange<std::list<int>>& get_phi (void) const { return gch::get<0> (m_partition); }
+  dependent_subrange<std::list<int>>& get_phi (void) { return get<0> (m_partition); }
+  const dependent_subrange<std::list<int>>& get_phi (void) const { return get<0> (m_partition); }
   
-  gch::dependent_subrange<std::list<int>>& get_body (void) { return gch::get<1> (m_partition); }
-  const gch::dependent_subrange<std::list<int>>& get_body (void) const { return gch::get<1> (m_partition); }
+  dependent_subrange<std::list<int>>& get_body (void) { return get<1> (m_partition); }
+  const dependent_subrange<std::list<int>>& get_body (void) const { return get<1> (m_partition); }
 
 private:
   std::list<int> m_data;
   std::list<int>::iterator m_pivot;
-  gch::dependent_partition_view<std::list<int>, 2> m_partition;
+  dependent_partition_view<std::list<int>, 2> m_partition;
   
 };
 
@@ -251,15 +253,15 @@ void do_test_partition_view (void)
 }
 
 template <std::size_t idx, typename T, std::size_t N, typename Container>
-typename std::enable_if<(idx == N)>::type print_subrange (gch::list_partition<T, N, Container>& p)
+typename std::enable_if<(idx == N)>::type print_subrange (list_partition<T, N, Container>& p)
 {
   std::cout << std::endl;
 }
 
 template <std::size_t idx, typename T, std::size_t N, typename Container>
-typename std::enable_if<(idx < N)>::type print_subrange (gch::list_partition<T, N, Container>& p)
+typename std::enable_if<(idx < N)>::type print_subrange (list_partition<T, N, Container>& p)
 {
-  gch::list_partition_subrange<Container, N, idx>& r = gch::get<idx> (p);
+  list_partition_subrange<Container, N, idx>& r = get<idx> (p);
   std::cout << "[ ";
   if (! r.empty ())
   {
@@ -275,7 +277,7 @@ typename std::enable_if<(idx < N)>::type print_subrange (gch::list_partition<T, 
 }
 
 template <typename T, std::size_t N, typename Container>
-void print_partition (gch::list_partition<T, N, Container>& p)
+void print_partition (list_partition<T, N, Container>& p)
 {
   print_subrange<0> (p);
 }
@@ -299,39 +301,95 @@ void print_view (const View& v)
 
 void do_test_list_partition (void)
 {
-  gch::list_partition<int, 3> x;
-  auto& r1 = gch::get<0> (x);
-  auto& r2 = gch::get<1> (x);
-  auto& r3 = gch::get<2> (x);
+  list_partition<int, 3> p1;
+  auto& r1 = get_subrange<0> (p1);
+  auto& r2 = get<1> (p1);
+  auto& r3 = get<2> (p1);
   
   r1.emplace_back (1);
-  print_partition (x);
+  print_partition (p1);
   
   r1.emplace_back (3);
-  print_partition (x);
+  print_partition (p1);
   
   r3.emplace_back (7);
-  print_partition (x);
+  print_partition (p1);
   
   r3.emplace_back (9);
-  print_partition (x);
+  print_partition (p1);
   
   r2.emplace_back (17);
-  print_partition (x);
+  print_partition (p1);
   
-  auto pv = x.partition_view ();
+  list_partition<int, 5> p2;
+  get_subrange<3> (p2).emplace_back (70);
+  get_subrange<3> (p2).emplace_back (12);
+  get_subrange<3> (p2).emplace_back (97);
+  get_subrange<3> (p2).emplace_back (82);
+  
+  auto p3 = partition_cat (p1, p2);
+  auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
+  
+  print_view (p3.partition_view ());
+  print_view (p4.partition_view ());
+  
+  
+  auto pv = p1.partition_view ();
   print_view (pv);
   
-  const auto& y = x;
+  const auto& y = p1;
   auto cpv = y.partition_view ();
   print_view (cpv);
   
+  std::cout << std::endl;
+
+#ifdef GCH_PARTITION_ITERATOR
+  
+  partition_iterator<decltype (p1)> it = p1.begin ();
+  partition_iterator<const decltype (p1)> cit = it;
+  for (const auto& e : p1)
+  {
+    std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (decltype (p1)::overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (p1.overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (partition_overload<decltype (p1)> ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (partition_overload (p1, [] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+#endif
+  
 }
+
+const int repeat = 100;
 
 int main (void)
 {
-  auto s1 = do_test_subrange (test_subrange ());
-  auto s2 = do_test_subrange (test_partition ());
-  do_test_list_partition ();
+  for (int i = 0; i < repeat; ++i)
+  {
+    auto s1 = do_test_subrange (test_subrange ());
+    auto s2 = do_test_subrange (test_partition ());
+    do_test_list_partition ();
+  }
   return 0;
 }

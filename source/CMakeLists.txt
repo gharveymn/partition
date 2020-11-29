@@ -11,8 +11,7 @@ CREATE_PACKAGE(AUTHOR         gharveymn
                NAMESPACE      gch
                NAME           partition
                HEADERS        partition.hpp
-                              list_partition.hpp
-                              internal/integer_sequence.hpp)
+                              list_partition.hpp)
 
 # Only include tests if we are at the top level
 IF(PARTITION_BUILD_TESTS)

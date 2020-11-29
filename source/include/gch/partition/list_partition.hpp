@@ -108,13 +108,41 @@ namespace gch
     list_partition_subrange (void)
       : next_type ()
     { }
-    
+  
     list_partition_subrange (const list_partition_subrange& other)
       : next_type (other)
     { }
   
     list_partition_subrange (list_partition_subrange&& other)
       : next_type (std::move (other))
+    { }
+  
+    template <std::size_t M, typename ...Subranges>
+    list_partition_subrange (const list_partition_subrange<Container, M, 0>& other,
+                             Subranges&&... subranges)
+      : next_type (static_cast<const list_partition_subrange<Container, M, 1>&> (other),
+                   std::forward<Subranges> (subranges)...)
+    { }
+  
+    template <std::size_t M, typename ...Subranges>
+    list_partition_subrange (list_partition_subrange<Container, M, 0>&& other,
+                             Subranges&&... subranges)
+      : next_type (static_cast<list_partition_subrange<Container, M, 1>&&> (other),
+                   std::forward<Subranges> (subranges)...)
+    { }
+  
+    template <typename T, std::size_t M, typename ...Subranges>
+    list_partition_subrange (list_partition<T, M, Container>&& partition,
+                             Subranges&&... subranges)
+      : list_partition_subrange (get_subrange<0> (partition),
+                                 std::forward<Subranges> (subranges)...)
+    { }
+  
+    template <typename T, std::size_t M, typename ...Subranges>
+    list_partition_subrange (const list_partition<T, M, Container>& partition,
+                             Subranges&&... subranges)
+      : list_partition_subrange (get_subrange<0> (partition),
+                                 std::forward<Subranges> (subranges)...)
     { }
   
   public:
@@ -530,16 +558,67 @@ namespace gch
         m_first (m_container.end ())
     { }
   
-  
     list_partition_subrange (const list_partition_subrange& other)
       : next_type (other),
         m_first (std::next (m_container.begin (),
-                               std::distance (other.m_container.begin (), other.m_first)))
+                            std::distance (other.m_container.begin (), other.begin ())))
     { }
   
     list_partition_subrange (list_partition_subrange&& other)
-      : next_type (other),
+      : next_type (std::move (other)),
         m_first (other.m_first)
+    { }
+  
+    template <std::size_t M, std::size_t OtherIdx, typename ...Subranges,
+      typename std::enable_if<(OtherIdx < M)>::type * = nullptr>
+    list_partition_subrange (const list_partition_subrange<Container, M, OtherIdx>& other,
+                             Subranges&&... subranges)
+      : next_type (static_cast<const list_partition_subrange<Container, M, OtherIdx + 1>&> (other),
+                   std::forward<Subranges> (subranges)...),
+        m_first (std::next (m_container.begin (),
+                            std::distance (other.m_container.begin (), other.begin ())))
+    { }
+  
+    template <std::size_t M, std::size_t OtherIdx, typename ...Subranges,
+      typename std::enable_if<(OtherIdx == M)>::type * = nullptr>
+    list_partition_subrange (const list_partition_subrange<Container, M, OtherIdx>& other,
+                             Subranges&&... subranges)
+      : list_partition_subrange (std::forward<Subranges> (subranges)...)
+    {
+      m_container.insert (m_container.cbegin (), other.m_container.cbegin (),
+                          other.m_container.cend ());
+    }
+  
+    template <std::size_t M, std::size_t OtherIdx, typename ...Subranges,
+              typename std::enable_if<(OtherIdx < M)>::type * = nullptr>
+    list_partition_subrange (list_partition_subrange<Container, M, OtherIdx>&& other,
+                             Subranges&&... subranges)
+      : next_type (static_cast<list_partition_subrange<Container, M, OtherIdx + 1>&&> (other),
+                   std::forward<Subranges> (subranges)...),
+        m_first (other.begin ())
+    { }
+  
+    template <std::size_t M, std::size_t OtherIdx, typename ...Subranges,
+              typename std::enable_if<(OtherIdx == M)>::type * = nullptr>
+    list_partition_subrange (list_partition_subrange<Container, M, OtherIdx>&& other,
+                             Subranges&&... subranges)
+      : list_partition_subrange (std::forward<Subranges> (subranges)...)
+    {
+      m_container.splice (m_container.cbegin (), other.m_container);
+    }
+  
+    template <typename T, std::size_t M, typename ...Subranges>
+    list_partition_subrange (list_partition<T, M, Container>&& partition,
+                             Subranges&&... subranges)
+      : list_partition_subrange (get_subrange<0> (partition),
+                                 std::forward<Subranges> (subranges)...)
+    { }
+  
+    template <typename T, std::size_t M, typename ...Subranges>
+    list_partition_subrange (const list_partition<T, M, Container>& partition,
+                             Subranges&&... subranges)
+      : list_partition_subrange (get_subrange<0> (partition),
+                                 std::forward<Subranges> (subranges)...)
     { }
   
   public:
@@ -966,12 +1045,32 @@ namespace gch
     }
     
     list_partition_subrange            (void)                               = default;
-    list_partition_subrange            (const list_partition_subrange&)     = default;
-    list_partition_subrange            (list_partition_subrange&&) noexcept = default;
+//  list_partition_subrange            (const list_partition_subrange&)     = impl;
+//  list_partition_subrange            (list_partition_subrange&&) noexcept = impl;
     list_partition_subrange& operator= (const list_partition_subrange&)     = default;
     list_partition_subrange& operator= (list_partition_subrange&&) noexcept = default;
     ~list_partition_subrange           (void)                               = default;
+  
+  protected:
+    list_partition_subrange (const list_partition_subrange& other)
+      : m_container (other.m_container)
+    { }
+  
+    list_partition_subrange (list_partition_subrange&& other)
+      : m_container (std::move (other.m_container))
+    { }
+  
+    template <std::size_t M>
+    list_partition_subrange (const list_partition_subrange<Container, M, M>& other)
+      : m_container (other.m_container)
+    { }
     
+    template <std::size_t M>
+    list_partition_subrange (list_partition_subrange<Container, M, M>&& other)
+      : m_container (std::move (other.m_container))
+    { }
+    
+  public:
     iter  begin  (void)       noexcept { return m_container.end ();  }
     citer begin  (void) const noexcept { return m_container.cend (); }
     citer cbegin (void) const noexcept { return m_container.cend (); }
@@ -1022,16 +1121,17 @@ namespace gch
   {
     using base_type = list_partition_subrange<Container, N, 0>;
   public:
-    using container_type = Container;
-    using iter           = typename container_type::iterator;
-    using citer          = typename container_type::const_iterator;
-    using riter          = typename container_type::reverse_iterator;
-    using criter         = typename container_type::const_reverse_iterator;
-    using ref            = typename container_type::reference;
-    using cref           = typename container_type::const_reference;
-    using size_type      = typename container_type::size_type;
-    using value_type     = typename container_type::value_type;
-    using alloc_type     = typename container_type::value_type;
+    using data_type           = T;
+    using container_type      = Container;
+    using data_iter           = typename container_type::iterator;
+    using data_citer          = typename container_type::const_iterator;
+    using data_riter          = typename container_type::reverse_iterator;
+    using data_criter         = typename container_type::const_reverse_iterator;
+    using data_ref            = typename container_type::reference;
+    using data_cref           = typename container_type::const_reference;
+    using data_size_type      = typename container_type::size_type;
+    using data_value_type     = typename container_type::value_type;
+    using data_alloc_type     = typename container_type::value_type;
     
   protected:
     
@@ -1046,19 +1146,67 @@ namespace gch
     list_partition& operator= (list_partition&&) noexcept = default;
     ~list_partition           (void)                      = default;
     
+    // concatenation constructor
+    template <std::size_t M, typename ...Partitions>
+    list_partition (const list_partition<T, M, Container>& p, Partitions&&... ps)
+      : base_type (get_subrange<0> (p), std::forward<Partitions> (ps)...)
+    { }
+
+    template <std::size_t M, typename ...Partitions>
+    list_partition (list_partition<T, M, Container>&& p, Partitions&&... ps)
+      : base_type (get_subrange<0> (p), std::forward<Partitions> (ps)...)
+    { }
+  
     template <std::size_t Index>
     using subrange_type = list_partition_subrange<Container, N, Index>;
+  
+    template <std::size_t Index, typename Partition>
+    friend constexpr partition_element_t<Index, Partition>&
+    get_subrange (Partition& p) noexcept;
+  
+    template <std::size_t Index, typename Partition>
+    friend constexpr const partition_element_t<Index, Partition>&
+    get_subrange (const Partition& p) noexcept;
+  
+    template <std::size_t Index, typename Partition>
+    friend constexpr partition_element_t<Index, Partition>&&
+    get_subrange (Partition&& p) noexcept;
+  
+    template <std::size_t Index, typename Partition>
+    friend constexpr const partition_element_t<Index, Partition>&&
+    get_subrange (const Partition&& p) noexcept;
+  
+    GCH_CPP14_CONSTEXPR subrange_type<0> front (void) noexcept
+    {
+      return get_subrange<0> (*this);
+    }
+    
+    constexpr subrange_type<0> front (void) const noexcept
+    {
+      return get_subrange<0> (*this);
+    }
+  
+    GCH_CPP14_CONSTEXPR subrange_type<N - 1> back (void) noexcept
+    {
+      return get_subrange<N - 1> (*this);
+    }
+    
+    constexpr subrange_type<N - 1> back (void) const noexcept
+    {
+      return get_subrange<N - 1> (*this);
+    }
     
     static constexpr std::size_t size (void) noexcept { return N; }
+    GCH_NODISCARD static constexpr bool empty (void) noexcept { return N == 0; }
     
     using base_type::num_subranges;
   
-    gch::subrange_view<iter> data_view (void)
+    gch::subrange_view<data_iter> data_view (void)
     {
       return { m_container.begin (), m_container.end () };
     }
   
-    gch::subrange_view<citer> data_view (void) const
+    gch::subrange_view<data_citer> data_view (void) const
     {
       return { m_container.begin (), m_container.end () };
     }
@@ -1074,76 +1222,93 @@ namespace gch
     }
     
     template <std::size_t Idx>
-    gch::subrange_view<iter> subrange_view (void)
+    gch::subrange_view<data_iter> subrange_view (void)
     {
-      return subrange<Idx> ().view ();
+      return get_subrange<Idx> (*this).view ();
     }
   
     template <std::size_t Idx>
-    gch::subrange_view<citer> subrange_view (void) const
+    gch::subrange_view<data_citer> subrange_view (void) const
     {
-      return subrange<Idx> ().view ();
+      return get_subrange<Idx> (*this).view ();
     }
+
+#ifdef GCH_PARTITION_ITERATOR
   
-    template <std::size_t Index>
-    GCH_CPP14_CONSTEXPR list_partition_subrange<Container, N, Index>& subrange (void) & noexcept
+    using iter   = partition_iterator<list_partition>;
+    using citer  = partition_iterator<const list_partition>;
+    using riter  = std::reverse_iterator<iter>;
+    using criter = std::reverse_iterator<citer>;
+    
+    [[nodiscard]] constexpr iter  begin   (void)       noexcept { return { *this, 0 };       }
+    [[nodiscard]] constexpr citer begin   (void) const noexcept { return { *this, 0 };       }
+    [[nodiscard]] constexpr citer cbegin  (void) const noexcept { return { *this, 0 };       }
+    
+    [[nodiscard]] constexpr iter  end     (void)       noexcept { return { *this, N };       }
+    [[nodiscard]] constexpr citer end     (void) const noexcept { return { *this, N };       }
+    [[nodiscard]] constexpr citer cend    (void) const noexcept { return { *this, N };       }
+    
+    [[nodiscard]] constexpr auto  rbegin  (void)       noexcept { return riter (end ());     }
+    [[nodiscard]] constexpr auto  rbegin  (void) const noexcept { return criter (cend ());   }
+    [[nodiscard]] constexpr auto  crbegin (void) const noexcept { return criter (cend ());   }
+    
+    [[nodiscard]] constexpr auto  rend    (void)       noexcept { return riter (begin ());   }
+    [[nodiscard]] constexpr auto  rend    (void) const noexcept { return criter (cbegin ()); }
+    [[nodiscard]] constexpr auto  crend   (void) const noexcept { return criter (cbegin ()); }
+    
+    template <typename ...Fs>
+    struct overloader
+      : partition_overloader<list_partition, Fs...>
     {
-      return static_cast<list_partition_subrange<Container, N, Index>&> (*this);
-    }
+      using partition_overloader<list_partition, Fs...>::partition_overloader;
+    };
   
-    template <std::size_t Index>
-    GCH_CPP14_CONSTEXPR list_partition_subrange<Container, N, Index>&& subrange (void) && noexcept
+    template<typename... Fs> overloader (Fs&&...) -> overloader<Fs...>;
+    
+    template <typename ...Fs>
+    static constexpr auto overload (Fs&&... fs) noexcept
     {
-      return static_cast<list_partition_subrange<Container, N, Index>&&> (*this);
+      return overloader<Fs...> (std::forward<Fs> (fs)...);
     }
-  
-    template <std::size_t Index>
-    constexpr const list_partition_subrange<Container, N, Index>& subrange (void) const& noexcept
-    {
-      return static_cast<const list_partition_subrange<Container, N, Index>&> (*this);
-    }
-  
-    template <std::size_t Index>
-    constexpr const list_partition_subrange<Container, N, Index>&& subrange (void) const&& noexcept
-    {
-      return static_cast<const list_partition_subrange<Container, N, Index>&&> (*this);
-    }
+    
+#endif
     
   private:
   };
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>
   constexpr auto get (list_partition<T, N, Container>& p) noexcept
-    -> decltype (p.template subrange<Index> ())
+    -> decltype (get_subrange<Index> (p))
   {
-    return p.template subrange<Index> ();
-  }
-  
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (list_partition<T, N, Container>&& p) noexcept
-    -> decltype (p.template subrange<Index> ())
-  {
-    return p.template subrange<Index> ();
+    return get_subrange<Index> (p);
   }
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>
   constexpr auto get (const list_partition<T, N, Container>& p) noexcept
-    -> decltype (p.template subrange<Index> ())
+    -> decltype (get_subrange<Index> (p))
   {
-    return p.template subrange<Index> ();
+    return get_subrange<Index> (p);
+  }
+  
+  template <std::size_t Index, typename T, std::size_t N, typename Container>
+  constexpr auto get (list_partition<T, N, Container>&& p) noexcept
+    -> decltype (get_subrange<Index> (p))
+  {
+    return get_subrange<Index> (p);
   }
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>
   constexpr auto get (const list_partition<T, N, Container>&& p) noexcept
-    -> decltype (p.template subrange<Index> ())
+    -> decltype (get_subrange<Index> (p))
   {
-    return p.template subrange<Index> ();
+    return get_subrange<Index> (p);
   }
   
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr std::size_t size (const list_partition<T, N, Container>& p) noexcept
+  template <typename T, typename Container, typename ...Partitions>
+  list_partition<T, total_subranges<Partitions...>::value, Container>
+  partition_cat (Partitions&&... ps)
   {
-    return N;
+    return { std::forward<Partitions> (ps)... };
   }
 
 #if __cpp_lib_three_way_comparison >= 201907L
