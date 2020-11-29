@@ -1200,6 +1200,31 @@ namespace gch
     GCH_NODISCARD static constexpr bool empty (void) noexcept { return N == 0; }
     
     using base_type::num_subranges;
+    
+    data_iter   data_begin   (void)       noexcept { return m_container.begin ();   }
+    data_citer  data_begin   (void) const noexcept { return m_container.begin ();   }
+    data_citer  data_cbegin  (void) const noexcept { return m_container.cbegin ();  }
+    
+    data_iter   data_end     (void)       noexcept { return m_container.end ();     }
+    data_citer  data_end     (void) const noexcept { return m_container.end ();     }
+    data_citer  data_cend    (void) const noexcept { return m_container.cend ();    }
+    
+    data_riter  data_rbegin  (void)       noexcept { return m_container.rbegin ();  }
+    data_criter data_rbegin  (void) const noexcept { return m_container.rbegin ();  }
+    data_criter data_crbegin (void) const noexcept { return m_container.crbegin (); }
+    
+    data_riter  data_rend    (void)       noexcept { return m_container.rend ();    }
+    data_criter data_rend    (void) const noexcept { return m_container.rend ();    }
+    data_criter data_crend   (void) const noexcept { return m_container.crend ();   }
+    
+    data_ref&   data_front   (void)       noexcept { return m_container.front ();   }
+    data_cref&  data_front   (void) const noexcept { return m_container.front ();   }
+    
+    data_ref&   data_back    (void)       noexcept { return m_container.back ();    }
+    data_cref&  data_back    (void) const noexcept { return m_container.back ();    }
+    
+    data_size_type data_size (void) const noexcept { return m_container.size (); }
+    GCH_NODISCARD bool data_empty (void) const noexcept { return m_container.empty (); }
   
     gch::subrange_view<data_iter> data_view (void)
     {
