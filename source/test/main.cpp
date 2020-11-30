@@ -9,6 +9,7 @@
 
 #include <gch/partition/partition.hpp>
 #include <gch/partition/list_partition.hpp>
+#include <gch/partition/dependent_partition.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -283,19 +284,23 @@ void print_partition (list_partition<T, N, Container>& p)
 }
 
 template <typename View>
-void print_view (const View& v)
+void print_subrange_view (const View& v)
+{
+  std::cout << "[ ";
+  if (! v.empty ())
+  {
+    std::cout << v.front ();
+    for (auto it = ++v.begin (); it != v.end (); ++it)
+      std::cout << ", " << *it;
+  }
+  std::cout << " ]" << std::endl;
+}
+
+template <typename View>
+void print_partition_view (const View& v)
 {
   for (auto&& s : v)
-  {
-    std::cout << "[ ";
-    if (!s.empty ())
-    {
-      std::cout << s.front ();
-      for (auto it = ++s.begin (); it != s.end (); ++it)
-        std::cout << ", " << *it;
-    }
-    std::cout << " ]" << std::endl;
-  }
+    print_subrange_view (s);
   std::cout << std::endl;
 }
 
@@ -303,7 +308,7 @@ void do_test_list_partition (void)
 {
   list_partition<int, 3> p1;
   auto& r1 = get_subrange<0> (p1);
-  auto& r2 = get<1> (p1);
+  auto& r2 = get_subrange<1> (p1);
   auto& r3 = get<2> (p1);
   
   r1.emplace_back (1);
@@ -321,6 +326,14 @@ void do_test_list_partition (void)
   r2.emplace_back (17);
   print_partition (p1);
   
+  auto& r22 = next_subrange (r1);
+  std::cout << "subrange: ";
+  print_subrange_view (r22.view ());
+  
+  auto& parent_part = get_partition (r1);
+  
+  auto& r11 = prev_subrange (r2);
+  
   list_partition<int, 5> p2;
   get_subrange<3> (p2).emplace_back (70);
   get_subrange<3> (p2).emplace_back (12);
@@ -330,16 +343,17 @@ void do_test_list_partition (void)
   auto p3 = partition_cat (p1, p2);
   auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
   
-  print_view (p3.partition_view ());
-  print_view (p4.partition_view ());
+  print_partition_view (p3.partition_view ());
+  print_partition_view (p4.partition_view ());
   
+  list_partition<int, 3> p6 (std::list<int>::allocator_type { });
   
   auto pv = p1.partition_view ();
-  print_view (pv);
+  print_partition_view (pv);
   
   const auto& y = p1;
   auto cpv = y.partition_view ();
-  print_view (cpv);
+  print_partition_view (cpv);
   
   std::cout << std::endl;
 
@@ -381,7 +395,7 @@ void do_test_list_partition (void)
   
 }
 
-const int repeat = 100;
+const int repeat = 1;
 
 int main (void)
 {
