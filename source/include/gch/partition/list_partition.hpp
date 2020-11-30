@@ -62,16 +62,25 @@ namespace gch
     friend class list_partition_subrange;
     
   public:
-    using container_type = Container;
-    using iter       = typename container_type::iterator;
-    using citer      = typename container_type::const_iterator;
-    using riter      = typename container_type::reverse_iterator;
-    using criter     = typename container_type::const_reverse_iterator;
-    using ref        = typename container_type::reference;
-    using cref       = typename container_type::const_reference;
-    using size_type  = typename container_type::size_type;
-    using value_type = typename container_type::value_type;
-    using alloc_type = typename container_type::allocator_type;
+    using container_type          = Container;
+  
+    using iterator                = typename container_type::iterator;
+    using const_iterator          = typename container_type::const_iterator;
+    using reverse_iterator        = typename container_type::reverse_iterator;
+    using const_reverse_iterator  = typename container_type::const_reverse_iterator;
+    using reference               = typename container_type::reference;
+    using const_reference         = typename container_type::const_reference;
+    using size_type               = typename container_type::size_type;
+    using difference_type         = typename container_type::difference_type;
+    using value_type              = typename container_type::value_type;
+    using allocator_type          = typename container_type::allocator_type;
+  
+    using iter   = iterator;
+    using citer  = const_iterator;
+    using riter  = reverse_iterator;
+    using criter = const_reverse_iterator;
+    using ref    = reference;
+    using cref   = const_reference;
     
     using partition_type = list_partition<value_type, N, container_type>;
     using subrange_type  = list_partition_subrange<container_type, N, 0>;
@@ -79,18 +88,6 @@ namespace gch
     using next_type      = list_partition_subrange<container_type, N, 1>;
     
     static constexpr std::size_t index (void) noexcept { return 0; }
-    
-    GCH_CPP14_CONSTEXPR next_type& next (void) noexcept
-    {
-      return static_cast<next_type&> (this);
-    }
-  
-    constexpr const next_type& next (void) const noexcept
-    {
-      return static_cast<next_type&> (this);
-    }
-    
-    void prev (void) = delete;
 
   protected:
     using next_type::m_container;
@@ -105,7 +102,6 @@ namespace gch
 //  list_partition_subrange& operator= (list_partition_subrange&&) noexcept = impl;
     ~list_partition_subrange           (void)                               = default;
     
-  protected:
     constexpr list_partition_subrange (void)
       : next_type ()
     { }
@@ -117,7 +113,8 @@ namespace gch
     constexpr list_partition_subrange (list_partition_subrange&& other)
       : next_type (std::move (other))
     { }
-  
+
+  protected:
     template <std::size_t M, typename ...Subranges>
     constexpr list_partition_subrange (const list_partition_subrange<Container, M, 0>& other,
                                        Subranges&&... subranges)
@@ -146,7 +143,7 @@ namespace gch
                                  std::forward<Subranges> (subranges)...)
     { }
   
-    constexpr explicit list_partition_subrange (const alloc_type& alloc)
+    constexpr explicit list_partition_subrange (const allocator_type& alloc)
       : next_type (alloc)
     { }
     
@@ -154,14 +151,7 @@ namespace gch
     list_partition_subrange& operator= (const list_partition_subrange& other) noexcept
     {
       if (&other != this)
-      {
-        iter it1 = begin ();
-        iter it2 = other.begin ();
-        for (; it1 != end () && it2 != other.end (); ++it1, ++it2)
-          *it1 = *it2;
-        erase (it1, end ());
-        insert (it2, other.end ());
-      }
+        assign (other.begin (), other.end ());
       return *this;
     }
   
@@ -234,7 +224,7 @@ namespace gch
     GCH_NODISCARD GCH_CPP14_CONSTEXPR ref&   back    (void)       noexcept { return *(--end ());  }
     GCH_NODISCARD constexpr           cref&  back    (void) const noexcept { return *(--cend ()); }
   
-    GCH_NODISCARD std::size_t size (void) const noexcept
+    GCH_NODISCARD GCH_CPP17_CONSTEXPR std::size_t size (void) const noexcept
     {
       return std::distance (cbegin (), cend ());
     }
@@ -358,7 +348,7 @@ namespace gch
     void splice (citer pos, list_partition_subrange<container_type, M, Idx>&& other)
     {
       m_container.splice (pos, std::move (other.m_container), other.cbegin (), other.cend ());
-      other.absolute_propagate_first (other.cend ());
+      other.absolute_propagate_first (other.end ());
     }
   
     template <std::size_t M, std::size_t Idx>
@@ -467,12 +457,12 @@ namespace gch
   private:
   
     void absolute_propagate_first (iter) { }
-    void propagate_first (iter, iter) { }
+    void propagate_first (citer, iter) { }
   
     citer resize_pos (size_type& count) const
     {
       citer cit;
-      const size_type len = subrange_cast (this)->size ();
+      const size_type len = size ();
       if (count < len)
       {
         if (count <= len / 2)
@@ -483,7 +473,7 @@ namespace gch
         else
         {
           cit = cend ();
-          std::ptrdiff_t num_erase = len - count;
+          difference_type num_erase = len - count;
           std::advance (cit, -num_erase);
         }
         count = 0;
@@ -493,7 +483,6 @@ namespace gch
       count -= len;
       return cit;
     }
-  
   };
   
   template <typename Container, std::size_t N, std::size_t Index>
@@ -505,16 +494,25 @@ namespace gch
     friend class list_partition_subrange;
     
   public:
-    using container_type = Container;
-    using iter       = typename container_type::iterator;
-    using citer      = typename container_type::const_iterator;
-    using riter      = typename container_type::reverse_iterator;
-    using criter     = typename container_type::const_reverse_iterator;
-    using ref        = typename container_type::reference;
-    using cref       = typename container_type::const_reference;
-    using size_type  = typename container_type::size_type;
-    using value_type = typename container_type::value_type;
-    using alloc_type = typename container_type::allocator_type;
+    using container_type          = Container;
+  
+    using iterator                = typename container_type::iterator;
+    using const_iterator          = typename container_type::const_iterator;
+    using reverse_iterator        = typename container_type::reverse_iterator;
+    using const_reverse_iterator  = typename container_type::const_reverse_iterator;
+    using reference               = typename container_type::reference;
+    using const_reference         = typename container_type::const_reference;
+    using size_type               = typename container_type::size_type;
+    using difference_type         = typename container_type::difference_type;
+    using value_type              = typename container_type::value_type;
+    using allocator_type          = typename container_type::allocator_type;
+  
+    using iter   = iterator;
+    using citer  = const_iterator;
+    using riter  = reverse_iterator;
+    using criter = const_reverse_iterator;
+    using ref    = reference;
+    using cref   = const_reference;
   
     using partition_type = list_partition<value_type, N, container_type>;
     using subrange_type  = list_partition_subrange<container_type, N, Index>;
@@ -522,26 +520,6 @@ namespace gch
     using next_type      = list_partition_subrange<container_type, N, Index + 1>;
   
     static constexpr std::size_t index (void) noexcept { return Index; }
-  
-    GCH_CPP14_CONSTEXPR next_type& next (void) noexcept
-    {
-      return static_cast<next_type&> (this);
-    }
-  
-    constexpr const next_type& next (void) const noexcept
-    {
-      return static_cast<next_type&> (this);
-    }
-  
-    GCH_CPP14_CONSTEXPR prev_type& prev (void) noexcept
-    {
-      return static_cast<prev_type&> (this);
-    }
-  
-    constexpr const prev_type& prev (void) const noexcept
-    {
-      return static_cast<prev_type&> (this);
-    }
     
   protected:
     using next_type::m_container;
@@ -555,8 +533,7 @@ namespace gch
 //  list_partition_subrange& operator= (const list_partition_subrange&)     = impl;
 //  list_partition_subrange& operator= (list_partition_subrange&&) noexcept = impl;
     ~list_partition_subrange           (void)                               = default;
-
-  protected:
+    
     list_partition_subrange (void)
       : next_type (),
         m_first (m_container.end ())
@@ -572,7 +549,8 @@ namespace gch
       : next_type (std::move (other)),
         m_first (other.m_first)
     { }
-  
+
+  protected:
     template <std::size_t M, std::size_t OtherIdx, typename ...Subranges,
       typename std::enable_if<(OtherIdx < M)>::type * = nullptr>
     list_partition_subrange (const list_partition_subrange<Container, M, OtherIdx>& other,
@@ -625,7 +603,7 @@ namespace gch
                                  std::forward<Subranges> (subranges)...)
     { }
   
-    constexpr explicit list_partition_subrange (const alloc_type& alloc)
+    constexpr explicit list_partition_subrange (const allocator_type& alloc)
       : next_type (alloc)
     { }
     
@@ -633,14 +611,7 @@ namespace gch
     list_partition_subrange& operator= (const list_partition_subrange& other) noexcept
     {
       if (&other != this)
-      {
-        iter it1 = begin ();
-        iter it2 = other.begin ();
-        for (; it1 != end () && it2 != other.end (); ++it1, ++it2)
-          *it1 = *it2;
-        erase (it1, end ());
-        insert (it2, other.end ());
-      }
+        assign (other.begin (), other.end ());
       return *this;
     }
   
@@ -711,7 +682,7 @@ namespace gch
     GCH_NODISCARD GCH_CPP14_CONSTEXPR ref&   back    (void)       noexcept { return *(--end ());  }
     GCH_NODISCARD constexpr           cref&  back    (void) const noexcept { return *(--cend ()); }
   
-    GCH_NODISCARD std::size_t size (void) const noexcept
+    GCH_NODISCARD GCH_CPP17_CONSTEXPR std::size_t size (void) const noexcept
     {
       return std::distance (cbegin (), cend ());
     }
@@ -779,19 +750,19 @@ namespace gch
     template <typename T>
     void push_front (T&& val)
     {
-      absolute_propagate_first (m_container.insert (m_first, std::forward<T> (val)));
+      absolute_propagate_first (m_container.insert (cbegin (), std::forward<T> (val)));
     }
   
     template <typename ...Args>
     ref emplace_front (Args&&... args)
     {
-      absolute_propagate_first (m_container.emplace (m_first, std::forward<Args> (args)...));
-      return *m_first;
+      absolute_propagate_first (m_container.emplace (cbegin (), std::forward<Args> (args)...));
+      return *begin ();
     }
   
     void pop_front (void)
     {
-      absolute_propagate_first (m_container.erase (m_first));
+      absolute_propagate_first (m_container.erase (cbegin ()));
     }
     
     void resize (size_type count)
@@ -882,10 +853,10 @@ namespace gch
     template <std::size_t M, std::size_t Idx>
     void splice (citer pos, list_partition_subrange<container_type, M, Idx>&& other)
     {
-      citer first = other.cbegin ();
+      iter first = other.begin ();
       m_container.splice (pos, std::move (other.m_container), first, other.cend ());
       propagate_first (pos, first);
-      other.absolute_propagate_first (other.cend ());
+      other.absolute_propagate_first (other.end ());
     }
   
     template <std::size_t M, std::size_t Idx>
@@ -974,15 +945,15 @@ namespace gch
   
     void absolute_propagate_first (iter replace)
     {
-      static_cast<prev_type *> (this)->propagate_first (m_first, replace);
+      prev_subrange (*this).propagate_first (m_first, replace);
       m_first = replace;
     }
     
-    void propagate_first (iter cmp, iter replace)
+    void propagate_first (citer cmp, iter replace)
     {
       if (m_first == cmp)
       {
-        static_cast<prev_type *> (this)->propagate_first (cmp, replace);
+        prev_subrange (*this).propagate_first (cmp, replace);
         m_first = replace;
       }
     }
@@ -990,7 +961,7 @@ namespace gch
     citer resize_pos (size_type& count) const
     {
       citer cit;
-      const size_type len = subrange_cast (this)->size ();
+      const size_type len = size ();
       if (count < len)
       {
         if (count <= len / 2)
@@ -1001,7 +972,7 @@ namespace gch
         else
         {
           cit = cend ();
-          std::ptrdiff_t num_erase = len - count;
+          difference_type num_erase = len - count;
           std::advance (cit, -num_erase);
         }
         count = 0;
@@ -1023,36 +994,33 @@ namespace gch
     friend class list_partition_subrange;
     
   public:
-    using container_type = Container;
-    using iter           = typename container_type::iterator;
-    using citer          = typename container_type::const_iterator;
-    using riter          = typename container_type::reverse_iterator;
-    using criter         = typename container_type::const_reverse_iterator;
-    using ref            = typename container_type::reference;
-    using cref           = typename container_type::const_reference;
-    using size_type      = typename container_type::size_type;
-    using value_type     = typename container_type::value_type;
-    using alloc_type     = typename container_type::allocator_type;
+    using container_type          = Container;
+  
+    using iterator                = typename container_type::iterator;
+    using const_iterator          = typename container_type::const_iterator;
+    using reverse_iterator        = typename container_type::reverse_iterator;
+    using const_reverse_iterator  = typename container_type::const_reverse_iterator;
+    using reference               = typename container_type::reference;
+    using const_reference         = typename container_type::const_reference;
+    using size_type               = typename container_type::size_type;
+    using difference_type         = typename container_type::difference_type;
+    using value_type              = typename container_type::value_type;
+    using allocator_type          = typename container_type::allocator_type;
+  
+    using iter   = iterator;
+    using citer  = const_iterator;
+    using riter  = reverse_iterator;
+    using criter = const_reverse_iterator;
+    using ref    = reference;
+    using cref   = const_reference;
   
     using partition_type = list_partition<value_type, N, container_type>;
     using subrange_type  = list_partition_subrange<container_type, N, N>;
     using prev_type      = list_partition_subrange<container_type, N, N - 1>;
     using next_type      = void;
     
-    static constexpr std::size_t index (void) noexcept { return N; }
+    static constexpr std::size_t index         (void) noexcept { return N; }
     static constexpr std::size_t num_subranges (void) noexcept { return N; }
-  
-    void next (void) = delete;
-  
-    GCH_CPP14_CONSTEXPR prev_type& prev (void) noexcept
-    {
-      return static_cast<prev_type&> (this);
-    }
-  
-    constexpr const prev_type& prev (void) const noexcept
-    {
-      return static_cast<prev_type&> (this);
-    }
     
     list_partition_subrange            (void)                               = default;
 //  list_partition_subrange            (const list_partition_subrange&)     = impl;
@@ -1061,7 +1029,7 @@ namespace gch
     list_partition_subrange& operator= (list_partition_subrange&&) noexcept = default;
     ~list_partition_subrange           (void)                               = default;
   
-  protected:
+  
     list_partition_subrange (const list_partition_subrange& other)
       : m_container (other.m_container)
     { }
@@ -1069,18 +1037,19 @@ namespace gch
     list_partition_subrange (list_partition_subrange&& other)
       : m_container (std::move (other.m_container))
     { }
-  
+
+  protected:
     template <std::size_t M>
-    list_partition_subrange (const list_partition_subrange<Container, M, M>& other)
+    list_partition_subrange (const list_partition_subrange<container_type, M, M>& other)
       : m_container (other.m_container)
     { }
     
     template <std::size_t M>
-    list_partition_subrange (list_partition_subrange<Container, M, M>&& other)
+    list_partition_subrange (list_partition_subrange<container_type, M, M>&& other)
       : m_container (std::move (other.m_container))
     { }
   
-    explicit list_partition_subrange (const alloc_type& alloc)
+    explicit list_partition_subrange (const allocator_type& alloc)
       : m_container (alloc)
     { }
     
@@ -1089,7 +1058,7 @@ namespace gch
     citer begin  (void) const noexcept { return m_container.cend (); }
     citer cbegin (void) const noexcept { return m_container.cend (); }
   
-    alloc_type get_allocator (void) const noexcept
+    allocator_type get_allocator (void) const noexcept
     {
       return m_container.get_allocator ();
     }
@@ -1104,6 +1073,14 @@ namespace gch
   protected:
     container_type m_container;
   };
+  
+  template <typename Container, std::size_t N, std::size_t Idx>
+  void swap (list_partition_subrange<Container, N, Idx>& lhs,
+             list_partition_subrange<Container, N, Idx>& rhs)
+  noexcept (noexcept (lhs.swap (rhs)))
+  {
+    lhs.swap (rhs);
+  }
   
   template <typename Container, std::size_t N, std::size_t Idx1, std::size_t M, std::size_t Idx2>
   void swap (list_partition_subrange<Container, N, Idx1>& lhs,
@@ -1143,17 +1120,18 @@ namespace gch
     { };
     
   public:
-    using data_type           = T;
-    using container_type      = Container;
-    using data_iter           = typename container_type::iterator;
-    using data_citer          = typename container_type::const_iterator;
-    using data_riter          = typename container_type::reverse_iterator;
-    using data_criter         = typename container_type::const_reverse_iterator;
-    using data_ref            = typename container_type::reference;
-    using data_cref           = typename container_type::const_reference;
-    using data_size_type      = typename container_type::size_type;
-    using data_value_type     = typename container_type::value_type;
-    using data_alloc_type     = typename container_type::allocator_type;
+    using container_type  = Container;
+  
+    using data_iter       = typename container_type::iterator;
+    using data_citer      = typename container_type::const_iterator;
+    using data_riter      = typename container_type::reverse_iterator;
+    using data_criter     = typename container_type::const_reverse_iterator;
+    using data_ref        = typename container_type::reference;
+    using data_cref       = typename container_type::const_reference;
+    using data_size_type  = typename container_type::size_type;
+    using data_diff_type  = typename container_type::difference_type;
+    using data_value_type = typename container_type::value_type;
+    using data_alloc_type = typename container_type::allocator_type;
     
   protected:
     
@@ -1218,22 +1196,22 @@ namespace gch
     friend constexpr const parent_partition_t<Subrange>&&
     get_partition (const Subrange&& p) noexcept;
   
-    GCH_CPP14_CONSTEXPR subrange_type<0> front (void) noexcept
+    GCH_CPP14_CONSTEXPR subrange_type<0>& front (void) noexcept
     {
       return get_subrange<0> (*this);
     }
     
-    constexpr subrange_type<0> front (void) const noexcept
+    constexpr const subrange_type<0>& front (void) const noexcept
     {
       return get_subrange<0> (*this);
     }
   
-    GCH_CPP14_CONSTEXPR subrange_type<N - 1> back (void) noexcept
+    GCH_CPP14_CONSTEXPR subrange_type<N - 1>& back (void) noexcept
     {
       return get_subrange<N - 1> (*this);
     }
     
-    constexpr subrange_type<N - 1> back (void) const noexcept
+    constexpr const subrange_type<N - 1>& back (void) const noexcept
     {
       return get_subrange<N - 1> (*this);
     }
@@ -1265,7 +1243,7 @@ namespace gch
     data_ref&   data_back    (void)       noexcept { return m_container.back ();    }
     data_cref&  data_back    (void) const noexcept { return m_container.back ();    }
     
-    data_size_type data_size (void) const noexcept { return m_container.size (); }
+    data_size_type GCH_CPP17_CONSTEXPR data_size (void) const noexcept { return m_container.size (); }
     GCH_NODISCARD bool data_empty (void) const noexcept { return m_container.empty (); }
   
     gch::subrange_view<data_iter> data_view (void)
@@ -1379,43 +1357,6 @@ namespace gch
   }
 
 #if __cpp_lib_three_way_comparison >= 201907L
-  
-  namespace detail::compare
-  {
-    template <typename T>
-    concept boolean_testable_impl = std::convertible_to<T, bool>;
-    
-    template<typename T>
-    concept boolean_testable = boolean_testable_impl<T> &&
-      requires (T&& t)
-      {
-        { ! std::forward<T> (t) } -> boolean_testable_impl;
-      };
-    
-    static constexpr struct synth_three_way_functor
-    {
-      template <typename T, typename U>
-      constexpr auto operator() (const T& lhs, const U& rhs) noexcept (noexcept (lhs <=> rhs))
-        requires std::three_way_comparable_with<T, U> &&
-          requires
-          {
-            { lhs < rhs } -> boolean_testable;
-            { lhs < rhs } -> boolean_testable;
-          }
-      {
-        return lhs <=> rhs;
-      }
-      
-      template <typename T, typename U>
-      constexpr auto operator() (const T& lhs, const U& rhs)
-        requires (! std::three_way_comparable_with<T, U>)
-      {
-        return (lhs < rhs) ? std::weak_ordering::less
-                           : (rhs < lhs) ? std::weak_ordering::greater
-                                         : std::weak_ordering::equivalent;
-      }
-    } synth_three_way;
-  }
 
   template <typename Container, std::size_t N, std::size_t Idx1, std::size_t M, std::size_t Idx2>
   constexpr bool operator== (const list_partition_subrange<Container, N, Idx1>& lhs,

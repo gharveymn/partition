@@ -8,15 +8,202 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <gch/partition/partition.hpp>
-#include <gch/partition/list_partition.hpp>
 #include <gch/partition/dependent_partition.hpp>
+#include <gch/partition/list_partition.hpp>
+// #include <gch/partition/vector_partition.hpp>
 
 #include <algorithm>
 #include <iostream>
 #include <list>
 #include <tuple>
+#include <string>
+#include <iterator>
+
+#if __cpp_concepts >= 201907L
+
+template <typename T>
+concept referenceable = std::is_same_v<T&, std::add_lvalue_reference_t<T>>;
+
+template<class I>
+concept LegacyIterator =
+requires(I i) {
+  {   *i } -> referenceable;
+  {  ++i } -> std::same_as<I&>;
+  { *i++ } -> referenceable;
+} && std::copyable<I>;
+
+template<class I>
+concept LegacyInputIterator =
+  LegacyIterator<I> &&
+  std::equality_comparable<I> &&
+  requires(I i)
+  {
+    typename std::iter_difference_t<I>;
+    typename std::indirectly_readable_traits<I>::value_type;
+    typename std::common_reference_t<std::iter_reference_t<I>&&,
+                                     typename std::indirectly_readable_traits<I>::value_type&>;
+    *i++;
+    typename std::common_reference_t<decltype(*i++)&&,
+                                     typename std::indirectly_readable_traits<I>::value_type&>;
+    requires std::signed_integral<std::iter_difference_t<I>>;
+  };
+
+template<class I>
+concept LegacyForwardIterator =
+  LegacyInputIterator<I> &&
+  std::constructible_from<I> &&
+  std::is_lvalue_reference_v<std::iter_reference_t<I>> &&
+  std::same_as<std::remove_cvref_t<std::iter_reference_t<I>>,
+               typename std::indirectly_readable_traits<I>::value_type> &&
+  requires(I i)
+  {
+    {  i++ } -> std::convertible_to<const I&>;
+    { *i++ } -> std::same_as<std::iter_reference_t<I>>;
+  };
+
+template <typename T, typename X, typename A>
+concept Erasable =
+  std::same_as<typename X::value_type, T> &&
+  std::same_as<typename X::allocator_type,
+               typename std::allocator_traits<A>::template rebind_alloc<T>> &&
+  requires (A m, T *p)
+  {
+    { std::allocator_traits<A>::destroy (m, p) };
+  };
+
+template <typename T, typename X, typename A>
+concept MoveInsertable =
+  std::same_as<typename X::value_type, T> &&
+  std::same_as<typename X::allocator_type,
+               typename std::allocator_traits<A>::template rebind_alloc<T>> &&
+  requires (A m, T *p, T&& rv)
+  {
+    { std::allocator_traits<A>::construct (m, p, rv) };
+  };
+
+template <typename T, typename X, typename A>
+concept CopyInsertable =
+  std::same_as<typename X::value_type, T> &&
+  std::same_as<typename X::allocator_type,
+               typename std::allocator_traits<A>::template rebind_alloc<T>> &&
+  MoveInsertable<T, X, A> &&
+  requires (A m, T *p,       T v) { std::allocator_traits<A>::construct (m, p, v); } &&
+  requires (A m, T *p, const T v) { std::allocator_traits<A>::construct (m, p, v); };
+
+template <typename Iterator, typename Container>
+concept ContainerIterator =
+  LegacyForwardIterator<Iterator> &&
+  std::same_as<Iterator, typename Container::iterator> ||
+    std::same_as<Iterator, typename Container::const_iterator>;
+
+template <typename C, typename T, typename A>
+concept Container =
+  requires (C a, C b, C&& rv)
+  {
+    typename C::value_type;
+    typename C::reference;
+    typename C::const_reference;
+    typename C::iterator;
+    typename C::const_iterator;
+    typename C::difference_type;
+    typename C::size_type;
+    
+    requires std::same_as<typename C::value_type, T>;
+    requires std::same_as<typename C::reference, T&>;
+    requires std::same_as<typename C::const_reference, const T&>;
+  
+    requires Erasable<T, C, A>;
+    
+    requires LegacyForwardIterator<typename C::iterator> &&
+             std::convertible_to<typename C::iterator,
+                                 typename C::const_iterator>;
+    
+    requires LegacyForwardIterator<typename C::const_iterator>;
+    
+    requires std::signed_integral<typename C::difference_type> &&
+             std::same_as<typename C::difference_type,
+               typename std::iterator_traits<typename C::iterator>::difference_type> &&
+             std::same_as<typename C::difference_type,
+               typename std::iterator_traits<typename C::const_iterator>::difference_type>;
+  
+    requires std::unsigned_integral<typename C::size_type> &&
+             (std::numeric_limits<typename C::difference_type>::max () <=
+               std::numeric_limits<typename C::size_type>::max ());
+    
+    requires std::default_initializable<C>;
+    requires std::copy_constructible<C>;
+    requires std::equality_comparable<C>;
+    requires std::swappable<C>;
+    
+    requires CopyInsertable<T, C, A>;
+    requires std::equality_comparable<T>;
+    requires std::destructible<T>;
+    requires std::signed_integral<typename C::difference_type>;
+  
+    { C ()          } -> std::same_as<C>;
+    { C (a)         } -> std::same_as<C>;
+    { C (rv)        } -> std::same_as<C>;
+    { a = b         } -> std::same_as<C&>;
+    { a = rv        } -> std::same_as<C&>;
+    { a.~C ()       } -> std::same_as<void>;
+    { a.begin ()    } -> ContainerIterator<C>;
+    { a.end ()      } -> ContainerIterator<C>;
+    { a.cbegin ()   } -> std::same_as<typename C::const_iterator>;
+    { a.cend ()     } -> std::same_as<typename C::const_iterator>;
+    { a == b        } -> std::convertible_to<bool>;
+    { a != b        } -> std::convertible_to<bool>;
+    { a.swap (b)    } -> std::same_as<void>;
+    { swap (a, b)   } -> std::same_as<void>;
+    { a.size ()     } -> std::same_as<typename C::size_type>;
+    { a.max_size () } -> std::same_as<typename C::size_type>;
+    { a.empty ()    } -> std::convertible_to<bool>;
+  
+    { const_cast<const C&> (a).begin () } -> std::same_as<typename C::const_iterator>;
+    { const_cast<const C&> (a).end ()   } -> std::same_as<typename C::const_iterator>;
+  };
+
+static_assert (Container<std::list<int>, int, std::list<int>::allocator_type>);
+static_assert (! Container<int, char, long>);
+
+template <typename X, typename T, typename A>
+concept AllocatorAwareContainer =
+  requires (X a, X b, X t, X&& rv, A m)
+  {
+    typename X::allocator_type;
+    requires std::same_as<typename X::allocator_type, A>;
+    requires std::same_as<typename A::value_type, typename X::value_type>;
+    
+    requires std::default_initializable<A>;
+    requires CopyInsertable<T, X, A>;
+    requires std::is_copy_assignable_v<X>;
+    
+    { a.get_allocator ()            } -> std::same_as<A>;
+    { X ()                          };
+    { X (m)                         };
+    { X (t, m)                      };
+    { X (rv)                        };
+    { X (rv, m)                     };
+    { a = t                         } -> std::same_as<X&>;
+    { a = const_cast<const X&&> (t) } -> std::same_as<X&>;
+    { a = rv                        } -> std::same_as<X&>;
+    { a.swap (b)                    } -> std::same_as<void>;
+  };
+
+static_assert (AllocatorAwareContainer<std::list<int>, int, std::list<int>::allocator_type>);
+static_assert (! AllocatorAwareContainer<int, char, long>);
+
+static_assert (Container<gch::list_partition_subrange<std::list<int>, 4, 1>, int, std::list<int>::allocator_type>);
+
+#endif
 
 using namespace gch;
+
+template class gch::list_partition<std::string, 4>;
+template class gch::list_partition_subrange<std::list<std::string>, 4, 0>;
+template class gch::list_partition_subrange<std::list<std::string>, 4, 1>;
+template class gch::list_partition_subrange<std::list<std::string>, 4, 2>;
+template class gch::list_partition_subrange<std::list<std::string>, 4, 3>;
+template class gch::list_partition_subrange<std::list<std::string>, 4, 4>;
 
 class test_subrange
 {

@@ -16,7 +16,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 SET_TARGET_PROPERTIES(test_partition PROPERTIES
-                      CXX_STANDARD          11
+                      CXX_STANDARD          20
                       CXX_STANDARD_REQUIRED NO
                       CXX_EXTENSIONS        NO)
 
