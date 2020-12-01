@@ -70,6 +70,336 @@ namespace gch
     }
   }
   
+  template <typename Partition>
+  struct partition_traits
+  {
+    using partition_type  = typename std::decay<Partition>::type;
+    
+    using value_type      = typename partition_type::value_type;
+    using container_type  = typename partition_type::container_type;
+    
+    using data_iter       = typename partition_type::data_iter;
+    using data_citer      = typename partition_type::data_citer;
+    using data_riter      = typename partition_type::data_riter;
+    using data_criter     = typename partition_type::data_criter;
+    using data_ref        = typename partition_type::data_ref;
+    using data_cref       = typename partition_type::data_cref;
+    using data_size_type  = typename partition_type::data_size_type;
+    using data_diff_type  = typename partition_type::data_diff_type;
+    using data_value_type = typename partition_type::data_value_type;
+    using data_alloc_type = typename partition_type::data_alloc_type;
+    
+    using first_type      = typename partition_type::first_type;
+    using last_type       = typename partition_type::last_type;
+    
+    template <std::size_t Index>
+    using subrange_type = typename partition_type::template subrange_type<Index>;
+    
+    static constexpr std::size_t num_subranges = partition_type::num_subranges ();
+  };
+  
+  template <typename Subrange>
+  struct subrange_traits
+  {
+    using subrange_type           = typename std::decay<Subrange>::type;
+    using partition_type          = typename subrange_type::partition_type;
+    using container_type          = typename subrange_type::container_type;
+    
+    using iterator                = typename subrange_type::iterator;
+    using const_iterator          = typename subrange_type::const_iterator;
+    using reverse_iterator        = typename subrange_type::reverse_iterator;
+    using const_reverse_iterator  = typename subrange_type::const_reverse_iterator;
+    using reference               = typename subrange_type::reference;
+    using const_reference         = typename subrange_type::const_reference;
+    using size_type               = typename subrange_type::size_type;
+    using difference_type         = typename subrange_type::difference_type;
+    using value_type              = typename subrange_type::value_type;
+    using allocator_type          = typename subrange_type::allocator_type;
+    
+    static constexpr std::size_t index         = subrange_type::index ();
+    static constexpr std::size_t num_subranges = subrange_type::num_subranges ();
+    
+    template <std::ptrdiff_t Offset = 1>
+    using next_type = typename partition_traits<partition_type>::
+    template subrange_type<index + Offset>;
+    
+    template <std::ptrdiff_t Offset = 1>
+    using prev_type = next_type<(-Offset)>;
+  };
+  
+  template <typename Partition>
+  struct partition_size
+    : std::integral_constant<std::size_t, partition_traits<Partition>::num_subranges>
+  { };
+  
+  template <std::size_t Index, typename Partition>
+  struct partition_element
+  {
+    using type = typename partition_traits<Partition>::template subrange_type<Index>;
+  };
+  
+  namespace detail
+  {
+    template <std::size_t Accum, typename ...Partitions>
+    struct total_subranges_impl;
+    
+    template <std::size_t Accum>
+    struct total_subranges_impl<Accum>
+      : std::integral_constant<std::size_t, Accum>
+    { };
+    
+    template <std::size_t Accum, typename Partition, typename ...Rest>
+    struct total_subranges_impl<Accum, Partition, Rest...>
+      : total_subranges_impl<Accum + partition_size<Partition>::value, Rest...>
+    { };
+    
+    template <typename Void, typename ...DecayedPartitions>
+    struct partition_container_type_impl
+    { };
+    
+    template <typename DecayedPartition>
+    struct partition_container_type_impl<void, DecayedPartition>
+    {
+      using type = typename DecayedPartition::container_type;
+    };
+    
+    template <typename DecayedPartition, typename ...Rest>
+    struct partition_container_type_impl<
+      typename std::enable_if<std::is_same<typename DecayedPartition::container_type,
+                                           typename partition_container_type_impl<void, Rest...>::type>::value>::type,
+      DecayedPartition, Rest...>
+      : partition_container_type_impl<void, Rest...>
+    { };
+    
+    template <typename Void, typename ...DecayedPartitions>
+    struct partition_data_type_impl
+    { };
+    
+    template <typename DecayedPartition>
+    struct partition_data_type_impl<void, DecayedPartition>
+    {
+      using type = typename DecayedPartition::data_value_type;
+    };
+    
+    template <typename DecayedPartition, typename ...Rest>
+    struct partition_data_type_impl<
+      typename std::enable_if<std::is_same<typename DecayedPartition::data_type,
+                                           typename partition_data_type_impl<void, Rest...>::type>::value>::type,
+      DecayedPartition, Rest...>
+      : partition_data_type_impl<void, Rest...>
+    { };
+    
+    template <std::size_t M, typename DecayedPartition>
+    struct partition_resized_type_impl;
+    
+    template <std::size_t M, typename T, std::size_t N, typename Container,
+      template <typename, std::size_t, typename> class DecayedPartitionT>
+    struct partition_resized_type_impl<M, DecayedPartitionT<T, N, Container>>
+    {
+      using type = DecayedPartitionT<T, M, Container>;
+    };
+    
+    template <typename ...>
+    using void_t = void;
+    
+    template <typename Void1, typename Void2, typename ...Partitions>
+    struct partition_cat_type_impl
+    { };
+    
+    template <typename DecayedPartition, typename ...Rest>
+    struct partition_cat_type_impl<void_t<partition_data_type_impl<void, DecayedPartition>>,
+                                   void_t<partition_container_type_impl<void, DecayedPartition>>,
+                                   DecayedPartition, Rest...>
+      : partition_resized_type_impl<total_subranges_impl<0, DecayedPartition, Rest...>::value,
+                                    DecayedPartition>
+    { };
+  };
+  
+  template <typename ...Partitions>
+  struct total_subranges
+    : detail::total_subranges_impl<0, typename std::decay<Partitions>::type...>
+  { };
+  
+  template <typename ...Partitions>
+  struct partition_container_type
+    : detail::partition_container_type_impl<void, typename std::decay<Partitions>::type...>
+  { };
+  
+  template <typename ...Partitions>
+  struct partition_data_type
+    : detail::partition_data_type_impl<void, typename std::decay<Partitions>::type...>
+  { };
+  
+  template <std::size_t M, typename Partition>
+  struct partition_resized_type
+    : detail::partition_resized_type_impl<M, typename std::decay<Partition>::type>
+  { };
+  
+  template <typename ...Partitions>
+  struct partition_cat_type
+    : detail::partition_cat_type_impl<void, void, typename std::decay<Partitions>::type...>
+  { };
+  
+  template <typename Subrange>
+  struct parent_partition_type
+  {
+    using type = typename subrange_traits<Subrange>::partition_type;
+  };
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  struct next_subrange_type
+  {
+    using type = typename subrange_traits<Subrange>::template next_type<Offset>;
+  };
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  struct prev_subrange_type
+  {
+    using type = typename subrange_traits<Subrange>::template prev_type<Offset>;
+  };
+  
+  template <std::size_t Index, typename Partition>
+  using partition_element_t = typename partition_element<Index, Partition>::type;
+  
+  template <typename ...Partitions>
+  using partition_container_t = typename partition_container_type<Partitions...>::type;
+  
+  template <typename ...Partitions>
+  using partition_data_t = typename partition_data_type<Partitions...>::type;
+  
+  template <std::size_t M, typename Partition>
+  using partition_resized_t = typename partition_resized_type<M, Partition>::type;
+  
+  template <typename ...Partitions>
+  using partition_cat_t = typename partition_cat_type<Partitions...>::type;
+  
+  template <typename Subrange>
+  using parent_partition_t = typename parent_partition_type<Subrange>::type;
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  using next_subrange_t = typename next_subrange_type<Subrange, Offset>::type;
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  using prev_subrange_t = typename prev_subrange_type<Subrange, Offset>::type;
+  
+  template <typename ...Partitions>
+  partition_cat_t<Partitions...> partition_cat (Partitions&&... ps)
+  {
+    return { std::forward<Partitions> (ps)... };
+  }
+  
+  template <std::size_t Index, typename Partition>
+  constexpr partition_element_t<Index, Partition>&
+  get_subrange (Partition& p) noexcept
+  {
+    return static_cast<partition_element_t<Index, Partition>&> (p);
+  }
+  
+  template <std::size_t Index, typename Partition>
+  constexpr const partition_element_t<Index, Partition>&
+  get_subrange (const Partition& p) noexcept
+  {
+    return static_cast<const partition_element_t<Index, Partition>&> (p);
+  }
+  
+  template <std::size_t Index, typename Partition>
+  constexpr partition_element_t<Index, Partition>&&
+  get_subrange (Partition&& p) noexcept
+  {
+    return static_cast<partition_element_t<Index, Partition>&&> (p);
+  }
+  
+  template <std::size_t Index, typename Partition>
+  constexpr const partition_element_t<Index, Partition>&&
+  get_subrange (const Partition&& p) noexcept
+  {
+    return static_cast<const partition_element_t<Index, Partition>&&> (p);
+  }
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr next_subrange_t<Subrange, Offset>&
+  next_subrange (Subrange& p) noexcept
+  {
+    return static_cast<next_subrange_t<Subrange, Offset>&> (p);
+  }
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr const next_subrange_t<Subrange, Offset>&
+  next_subrange (const Subrange& p) noexcept
+  {
+    return static_cast<const next_subrange_t<Subrange, Offset>&> (p);
+  }
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr next_subrange_t<Subrange, Offset>&&
+  next_subrange (Subrange&& p) noexcept
+  {
+    return static_cast<next_subrange_t<Subrange, Offset>&&> (p);
+  }
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr const next_subrange_t<Subrange, Offset>&&
+  next_subrange (const Subrange&& p) noexcept
+  {
+    return static_cast<const next_subrange_t<Subrange, Offset>&&> (p);
+  }
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr prev_subrange_t<Subrange, Offset>&
+  prev_subrange (Subrange& p) noexcept
+  {
+    return static_cast<prev_subrange_t<Subrange, Offset>&> (p);
+  }
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr const prev_subrange_t<Subrange, Offset>&
+  prev_subrange (const Subrange& p) noexcept
+  {
+    return static_cast<const prev_subrange_t<Subrange, Offset>&> (p);
+  }
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr prev_subrange_t<Subrange, Offset>&&
+  prev_subrange (Subrange&& p) noexcept
+  {
+    return static_cast<prev_subrange_t<Subrange, Offset>&&> (p);
+  }
+  
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr const prev_subrange_t<Subrange, Offset>&&
+  prev_subrange (const Subrange&& p) noexcept
+  {
+    return static_cast<const prev_subrange_t<Subrange, Offset>&&> (p);
+  }
+  
+  template <typename Subrange>
+  constexpr parent_partition_t<Subrange>&
+  get_partition (Subrange& p) noexcept
+  {
+    return static_cast<parent_partition_t<Subrange>&> (p);
+  }
+  
+  template <typename Subrange>
+  constexpr const parent_partition_t<Subrange>&
+  get_partition (const Subrange& p) noexcept
+  {
+    return static_cast<const parent_partition_t<Subrange>&> (p);
+  }
+  
+  template <typename Subrange>
+  constexpr parent_partition_t<Subrange>&&
+  get_partition (Subrange&& p) noexcept
+  {
+    return static_cast<parent_partition_t<Subrange>&&> (p);
+  }
+  
+  template <typename Subrange>
+  constexpr const parent_partition_t<Subrange>&&
+  get_partition (const Subrange&& p) noexcept
+  {
+    return static_cast<const parent_partition_t<Subrange>&&> (p);
+  }
+  
   template <typename Iterator>
   class subrange_view
   {
@@ -330,7 +660,7 @@ namespace gch
   private:
     
     template <std::size_t Index>
-    typename std::enable_if<(Index < partition_type::size ())>::type
+    typename std::enable_if<(Index < partition_traits<partition_type>::num_subranges)>::type
     init_views (partition_type& p)
     {
       m_subrange_views[Index] = p.template subrange_view<Index> ();
@@ -338,7 +668,7 @@ namespace gch
     }
   
     template <std::size_t Index>
-    typename std::enable_if<(Index == partition_type::size ())>::type
+    typename std::enable_if<(Index == partition_traits<partition_type>::num_subranges)>::type
     init_views (const partition_type& p) { }
     
     view_array m_subrange_views;
@@ -382,308 +712,7 @@ namespace gch
   template <typename Partition, std::size_t N>
   using const_partition_view = partition_view<const Partition, N>;
   
-  namespace detail
-  {
-    template <typename DecayedPartition>
-    struct partition_size_impl
-      : std::integral_constant<std::size_t, DecayedPartition::num_subranges ()>
-    { };
-  
-    template <std::size_t Index, typename DecayedPartition>
-    struct partition_element_impl
-    {
-      using type = typename DecayedPartition::template subrange_type<Index>;
-    };
-  }
-  
-  template <typename Partition>
-  struct partition_size
-    : detail::partition_size_impl<typename std::decay<Partition>::type>
-  { };
-  
-  template <std::size_t Index, typename Partition>
-  struct partition_element
-    : detail::partition_element_impl<Index, typename std::decay<Partition>::type>
-  { };
-  
-  namespace detail
-  {
-    template <std::size_t Accum, typename ...Partitions>
-    struct total_subranges_impl;
-  
-    template <std::size_t Accum>
-    struct total_subranges_impl<Accum>
-      : std::integral_constant<std::size_t, Accum>
-    { };
-  
-    template <std::size_t Accum, typename Partition, typename ...Rest>
-    struct total_subranges_impl<Accum, Partition, Rest...>
-      : total_subranges_impl<Accum + partition_size<Partition>::value, Rest...>
-    { };
-  
-    template <typename Void, typename ...DecayedPartitions>
-    struct partition_container_type_impl
-    { };
-  
-    template <typename DecayedPartition>
-    struct partition_container_type_impl<void, DecayedPartition>
-    {
-      using type = typename DecayedPartition::container_type;
-    };
-  
-    template <typename DecayedPartition, typename ...Rest>
-    struct partition_container_type_impl<
-      typename std::enable_if<std::is_same<typename DecayedPartition::container_type,
-        typename partition_container_type_impl<void, Rest...>::type>::value>::type,
-      DecayedPartition, Rest...>
-      : partition_container_type_impl<void, Rest...>
-    { };
-  
-    template <typename Void, typename ...DecayedPartitions>
-    struct partition_data_type_impl
-    { };
-  
-    template <typename DecayedPartition>
-    struct partition_data_type_impl<void, DecayedPartition>
-    {
-      using type = typename DecayedPartition::data_type;
-    };
-  
-    template <typename DecayedPartition, typename ...Rest>
-    struct partition_data_type_impl<
-      typename std::enable_if<std::is_same<typename DecayedPartition::data_type,
-        typename partition_data_type_impl<void, Rest...>::type>::value>::type,
-      DecayedPartition, Rest...>
-      : partition_data_type_impl<void, Rest...>
-    { };
-  
-    template <std::size_t M, typename DecayedPartition>
-    struct partition_resized_type_impl;
-    
-    template <std::size_t M, typename T, std::size_t N, typename Container,
-              template <typename, std::size_t, typename> class DecayedPartitionT>
-    struct partition_resized_type_impl<M, DecayedPartitionT<T, N, Container>>
-    {
-      using type = DecayedPartitionT<T, M, Container>;
-    };
-    
-    template <typename ...>
-    using void_t = void;
-  
-    template <typename Void1, typename Void2, typename ...Partitions>
-    struct partition_cat_type_impl
-    { };
-  
-    template <typename DecayedPartition, typename ...Rest>
-    struct partition_cat_type_impl<void_t<partition_data_type_impl<void, DecayedPartition>>,
-                                   void_t<partition_container_type_impl<void, DecayedPartition>>,
-                                   DecayedPartition, Rest...>
-      : partition_resized_type_impl<total_subranges_impl<0, DecayedPartition, Rest...>::value,
-                                    DecayedPartition>
-    { };
-    
-    template <typename DecayedSubrange>
-    struct parent_partition_type_impl
-    {
-      using type = typename DecayedSubrange::partition_type;
-    };
-  
-    template <typename DecayedSubrange>
-    struct next_subrange_type_impl
-    {
-      using type = typename DecayedSubrange::next_type;
-    };
-  
-    template <typename DecayedSubrange>
-    struct prev_subrange_type_impl
-    {
-      using type = typename DecayedSubrange::prev_type;
-    };
-  };
-  
-  template <typename ...Partitions>
-  struct total_subranges
-    : detail::total_subranges_impl<0, typename std::decay<Partitions>::type...>
-  { };
-  
-  template <typename ...Partitions>
-  struct partition_container_type
-    : detail::partition_container_type_impl<void, typename std::decay<Partitions>::type...>
-  { };
-  
-  template <typename ...Partitions>
-  struct partition_data_type
-    : detail::partition_data_type_impl<void, typename std::decay<Partitions>::type...>
-  { };
-  
-  template <std::size_t M, typename Partition>
-  struct partition_resized_type
-    : detail::partition_resized_type_impl<M, typename std::decay<Partition>::type>
-  { };
-  
-  template <typename ...Partitions>
-  struct partition_cat_type
-    : detail::partition_cat_type_impl<void, void, typename std::decay<Partitions>::type...>
-  { };
-  
-  template <typename Subrange>
-  struct parent_partition_type
-    : detail::parent_partition_type_impl<typename std::decay<Subrange>::type>
-  { };
-  
-  template <typename Subrange>
-  struct next_subrange_type
-    : detail::next_subrange_type_impl<typename std::decay<Subrange>::type>
-  { };
-  
-  template <typename Subrange>
-  struct prev_subrange_type
-    : detail::prev_subrange_type_impl<typename std::decay<Subrange>::type>
-  { };
-  
-  template <std::size_t Index, typename Partition>
-  using partition_element_t = typename partition_element<Index, Partition>::type;
-  
-  template <typename ...Partitions>
-  using partition_container_t = typename partition_container_type<Partitions...>::type;
-  
-  template <typename ...Partitions>
-  using partition_data_t = typename partition_data_type<Partitions...>::type;
-  
-  template <std::size_t M, typename Partition>
-  using partition_resized_t = typename partition_resized_type<M, Partition>::type;
-  
-  template <typename ...Partitions>
-  using partition_cat_t = typename partition_cat_type<Partitions...>::type;
-  
-  template <typename Subrange>
-  using parent_partition_t = typename parent_partition_type<Subrange>::type;
-  
-  template <typename Subrange>
-  using next_subrange_t = typename next_subrange_type<Subrange>::type;
-  
-  template <typename Subrange>
-  using prev_subrange_t = typename prev_subrange_type<Subrange>::type;
-  
-  template <typename ...Partitions>
-  partition_cat_t<Partitions...> partition_cat (Partitions&&... ps)
-  {
-    return { std::forward<Partitions> (ps)... };
-  }
-  
-  template <std::size_t Index, typename Partition>
-  constexpr partition_element_t<Index, Partition>&
-  get_subrange (Partition& p) noexcept
-  {
-    return static_cast<partition_element_t<Index, Partition>&> (p);
-  }
-  
-  template <std::size_t Index, typename Partition>
-  constexpr const partition_element_t<Index, Partition>&
-  get_subrange (const Partition& p) noexcept
-  {
-    return static_cast<const partition_element_t<Index, Partition>&> (p);
-  }
-  
-  template <std::size_t Index, typename Partition>
-  constexpr partition_element_t<Index, Partition>&&
-  get_subrange (Partition&& p) noexcept
-  {
-    return static_cast<partition_element_t<Index, Partition>&&> (p);
-  }
-  
-  template <std::size_t Index, typename Partition>
-  constexpr const partition_element_t<Index, Partition>&&
-  get_subrange (const Partition&& p) noexcept
-  {
-    return static_cast<const partition_element_t<Index, Partition>&&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr next_subrange_t<Subrange>&
-  next_subrange (Subrange& p) noexcept
-  {
-    return static_cast<next_subrange_t<Subrange>&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr const next_subrange_t<Subrange>&
-  next_subrange (const Subrange& p) noexcept
-  {
-    return static_cast<const next_subrange_t<Subrange>&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr next_subrange_t<Subrange>&&
-  next_subrange (Subrange&& p) noexcept
-  {
-    return static_cast<next_subrange_t<Subrange>&&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr const next_subrange_t<Subrange>&&
-  next_subrange (const Subrange&& p) noexcept
-  {
-    return static_cast<const next_subrange_t<Subrange>&&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr prev_subrange_t<Subrange>&
-  prev_subrange (Subrange& p) noexcept
-  {
-    return static_cast<prev_subrange_t<Subrange>&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr const prev_subrange_t<Subrange>&
-  prev_subrange (const Subrange& p) noexcept
-  {
-    return static_cast<const prev_subrange_t<Subrange>&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr prev_subrange_t<Subrange>&&
-  prev_subrange (Subrange&& p) noexcept
-  {
-    return static_cast<prev_subrange_t<Subrange>&&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr const prev_subrange_t<Subrange>&&
-  prev_subrange (const Subrange&& p) noexcept
-  {
-    return static_cast<const prev_subrange_t<Subrange>&&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr parent_partition_t<Subrange>&
-  get_partition (Subrange& p) noexcept
-  {
-    return static_cast<parent_partition_t<Subrange>&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr const parent_partition_t<Subrange>&
-  get_partition (const Subrange& p) noexcept
-  {
-    return static_cast<const parent_partition_t<Subrange>&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr parent_partition_t<Subrange>&&
-  get_partition (Subrange&& p) noexcept
-  {
-    return static_cast<parent_partition_t<Subrange>&&> (p);
-  }
-  
-  template <typename Subrange>
-  constexpr const parent_partition_t<Subrange>&&
-  get_partition (const Subrange&& p) noexcept
-  {
-    return static_cast<const parent_partition_t<Subrange>&&> (p);
-  }
-  
-#ifdef GCH_PARTITION_ITERATOR
+#ifdef GCH_HAS_VARIANT
 
 #  define GCH_PARTITION_ITERATOR
   
@@ -701,9 +730,14 @@ namespace gch
     };
   
   public:
-    
     using subrange_indices = std::make_index_sequence<Partition::size ()>;
     using variant_subrange = typename find_variant<subrange_indices>::type;
+    
+    using value_type        = variant_subrange;
+    using reference         = variant_subrange;
+    using pointer           = variant_subrange *;
+    using difference_type   = std::ptrdiff_t;
+    using iterator_category = std::bidirectional_iterator_tag;
     
     partition_iterator            (void)                          = default;
     partition_iterator            (const partition_iterator&)     = default;
@@ -811,11 +845,11 @@ namespace gch
   {
     
     template <typename ...Fs>
-    struct overload_wrapper : Fs ...
+    struct overload_wrapper : Fs...
     {
       template <typename ...Ts,
                 typename = std::enable_if_t<std::conjunction_v<
-                  std::is_same<std::decay_t<Ts>, Fs>...>>>
+                  std::is_same<std::decay_t<Ts>, std::decay_t<Fs>>...>>>
       constexpr overload_wrapper (Ts&& ... fs) noexcept
         : Fs (std::forward<Ts> (fs))...
       { }
@@ -899,8 +933,12 @@ namespace gch
       detail::partition_overload_impl<Partition, partition_overloader<Partition, Fs...>,
                                       std::make_index_sequence<Partition::size ()>>
   {
-    using detail::overload_wrapper<Fs...>::overload_wrapper;
+    using impl_type = detail::partition_overload_impl<Partition, partition_overloader,
+                                                      std::make_index_sequence<Partition::size ()>>;
     using wrapper_type = detail::overload_wrapper<Fs...>;
+    
+    using wrapper_type::overload_wrapper;
+    using impl_type::operator();
   };
   
   template <typename Partition, typename ...Fs,
@@ -908,13 +946,13 @@ namespace gch
               std::negation<std::is_same<std::decay_t<Fs>, Partition>>...>>>
   constexpr auto partition_overload (Fs&&... fs)
   {
-    return partition_overloader<Partition, std::decay_t<Fs>...> (std::forward<Fs> (fs)...);
+    return partition_overloader<Partition, Fs...> (std::forward<Fs> (fs)...);
   }
   
   template <typename Partition, typename ...Fs>
   constexpr auto partition_overload (const Partition&, Fs&&... fs)
   {
-    return partition_overloader<Partition, std::decay_t<Fs>...> (std::forward<Fs> (fs)...);
+    return partition_overloader<Partition, Fs...> (std::forward<Fs> (fs)...);
   }
 
 #endif

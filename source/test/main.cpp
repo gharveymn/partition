@@ -10,7 +10,7 @@
 #include <gch/partition/partition.hpp>
 #include <gch/partition/dependent_partition.hpp>
 #include <gch/partition/list_partition.hpp>
-// #include <gch/partition/vector_partition.hpp>
+#include <gch/partition/vector_partition.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -18,6 +18,7 @@
 #include <tuple>
 #include <string>
 #include <iterator>
+#include <chrono>
 
 #if __cpp_concepts >= 201907L
 
@@ -196,14 +197,24 @@ static_assert (Container<gch::list_partition_subrange<std::list<int>, 4, 1>, int
 
 #endif
 
-using namespace gch;
+namespace gch
+{
+  template class list_partition<std::string, 4>;
+  template class list_partition_subrange<std::list<std::string>, 4, 0>;
+  template class list_partition_subrange<std::list<std::string>, 4, 1>;
+  template class list_partition_subrange<std::list<std::string>, 4, 2>;
+  template class list_partition_subrange<std::list<std::string>, 4, 3>;
+  template class list_partition_subrange<std::list<std::string>, 4, 4>;
+  
+  template class vector_partition<std::string, 4>;
+  template class vector_partition_subrange<std::vector<std::string>, 4, 0>;
+  template class vector_partition_subrange<std::vector<std::string>, 4, 1>;
+  template class vector_partition_subrange<std::vector<std::string>, 4, 2>;
+  template class vector_partition_subrange<std::vector<std::string>, 4, 3>;
+  template class vector_partition_subrange<std::vector<std::string>, 4, 4>;
+}
 
-template class gch::list_partition<std::string, 4>;
-template class gch::list_partition_subrange<std::list<std::string>, 4, 0>;
-template class gch::list_partition_subrange<std::list<std::string>, 4, 1>;
-template class gch::list_partition_subrange<std::list<std::string>, 4, 2>;
-template class gch::list_partition_subrange<std::list<std::string>, 4, 3>;
-template class gch::list_partition_subrange<std::list<std::string>, 4, 4>;
+using namespace gch;
 
 class test_subrange
 {
@@ -440,17 +451,19 @@ void do_test_partition_view (void)
   test_partition p2 (0);
 }
 
-template <std::size_t idx, typename T, std::size_t N, typename Container>
-typename std::enable_if<(idx == N)>::type print_subrange (list_partition<T, N, Container>& p)
+template <std::size_t idx, typename T, std::size_t N, typename Container,
+          template <typename, std::size_t, typename> class PartitionT>
+typename std::enable_if<(idx == N)>::type print_subrange (PartitionT<T, N, Container>& p)
 {
   std::cout << std::endl;
 }
 
-template <std::size_t idx, typename T, std::size_t N, typename Container>
-typename std::enable_if<(idx < N)>::type print_subrange (list_partition<T, N, Container>& p)
+template <std::size_t idx, typename T, std::size_t N, typename Container,
+          template <typename, std::size_t, typename> class PartitionT>
+typename std::enable_if<(idx < N)>::type print_subrange (PartitionT<T, N, Container>& p)
 {
-  list_partition_subrange<Container, N, idx>& r = get<idx> (p);
-  std::cout << "[ ";
+  auto& r = get<idx> (p);
+  std::cout << "  [ ";
   if (! r.empty ())
   {
     std::cout << r.front ();
@@ -464,16 +477,18 @@ typename std::enable_if<(idx < N)>::type print_subrange (list_partition<T, N, Co
   print_subrange<idx + 1, T, N, Container> (p);
 }
 
-template <typename T, std::size_t N, typename Container>
-void print_partition (list_partition<T, N, Container>& p)
+template <typename Partition>
+void print_partition (Partition& p)
 {
+  std::cout << "{" << std::endl;
   print_subrange<0> (p);
+  std::cout << "}" << std::endl;
 }
 
 template <typename View>
 void print_subrange_view (const View& v)
 {
-  std::cout << "[ ";
+  std::cout << "  [ ";
   if (! v.empty ())
   {
     std::cout << v.front ();
@@ -486,9 +501,102 @@ void print_subrange_view (const View& v)
 template <typename View>
 void print_partition_view (const View& v)
 {
+  std::cout << "{" << std::endl;
   for (auto&& s : v)
     print_subrange_view (s);
+  std::cout << "}" << std::endl;
+}
+
+template <template <typename, std::size_t, typename> class PartitionT, typename C>
+void do_test_partition (void)
+{
+  PartitionT<int, 3, C> p1 { };
+  auto& r1 = get_subrange<0> (p1);
+  auto& r2 = get_subrange<1> (p1);
+  auto& r3 = get<2> (p1);
+  
+  r1.emplace_back (1);
+  print_partition (p1);
+  
+  r1.emplace_back (3);
+  print_partition (p1);
+  
+  r3.emplace_back (7);
+  print_partition (p1);
+  
+  r3.emplace_back (9);
+  print_partition (p1);
+  
+  r2.emplace_back (17);
+  print_partition (p1);
+  
+  auto& r22 = next_subrange (r1);
+  std::cout << "subrange: ";
+  print_subrange_view (r22.view ());
+  
+  auto& parent_part = get_partition (r1);
+  
+  auto& r11 = prev_subrange (r2);
+  
+  PartitionT<int, 5, C> p2;
+  get_subrange<3> (p2).emplace_back (70);
+  get_subrange<3> (p2).emplace_back (12);
+  get_subrange<3> (p2).emplace_back (97);
+  get_subrange<3> (p2).emplace_back (82);
+  
+  auto p3 = partition_cat (p1, p2);
+  auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
+  
+  print_partition_view (p3.partition_view ());
+  print_partition_view (p4.partition_view ());
+  
+  PartitionT<int, 3, C> p6 (std::allocator<int> { });
+  
+  auto pv = p1.partition_view ();
+  print_partition_view (pv);
+  
+  const auto& y = p1;
+  auto cpv = y.partition_view ();
+  print_partition_view (cpv);
+  
   std::cout << std::endl;
+
+#ifdef GCH_PARTITION_ITERATOR
+  
+  partition_iterator<decltype (p1)> it = p1.begin ();
+  partition_iterator<const decltype (p1)> cit = it;
+  for (const auto& e : p1)
+  {
+    std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (decltype (p1)::overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (p1.overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (partition_overload<decltype (p1)> ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (partition_overload (p1, [] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+
+#endif
+
 }
 
 void do_test_list_partition (void)
@@ -582,15 +690,119 @@ void do_test_list_partition (void)
   
 }
 
-const int repeat = 1;
+void do_test_vector_partition (void)
+{
+  vector_partition<int, 3> p1;
+  auto& r1 = get_subrange<0> (p1);
+  auto& r2 = get_subrange<1> (p1);
+  auto& r3 = get<2> (p1);
+  
+  r1.emplace_back (1);
+  print_partition (p1);
+  
+  r1.emplace_back (3);
+  print_partition (p1);
+  
+  r3.emplace_back (7);
+  print_partition (p1);
+  
+  r3.emplace_back (9);
+  print_partition (p1);
+  
+  r2.emplace_back (17);
+  print_partition (p1);
+  
+  auto& r22 = next_subrange (r1);
+  std::cout << "subrange: ";
+  print_subrange_view (r22.view ());
+  
+  auto& parent_part = get_partition (r1);
+  
+  auto& r11 = prev_subrange (r2);
+  
+  vector_partition<int, 5> p2;
+  get_subrange<3> (p2).emplace_back (70);
+  get_subrange<3> (p2).emplace_back (12);
+  get_subrange<3> (p2).emplace_back (97);
+  get_subrange<3> (p2).emplace_back (82);
+  
+  auto p3 = partition_cat (p1, p2);
+  auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
+  
+  print_partition_view (p3.partition_view ());
+  print_partition_view (p4.partition_view ());
+  
+  vector_partition<int, 3> p6 (std::vector<int>::allocator_type { });
+  
+  auto pv = p1.partition_view ();
+  print_partition_view (pv);
+  
+  const auto& y = p1;
+  auto cpv = y.partition_view ();
+  print_partition_view (cpv);
+  
+  std::cout << std::endl;
+
+#ifdef GCH_PARTITION_ITERATOR
+  
+  partition_iterator<decltype (p1)> it = p1.begin ();
+  partition_iterator<const decltype (p1)> cit = it;
+  for (const auto& e : p1)
+  {
+    std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (decltype (p1)::overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (p1.overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (partition_overload<decltype (p1)> ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+  
+  for (const auto& e : p1)
+  {
+    std::visit (partition_overload (p1, [] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+
+#endif
+  
+}
+
+const int repeat = 100;
 
 int main (void)
 {
+  // auto s1 = do_test_subrange (test_subrange ());
+  // auto s2 = do_test_subrange (test_partition ());
+  
+  using clock = std::chrono::high_resolution_clock;
+  auto ts = clock::now ();
   for (int i = 0; i < repeat; ++i)
   {
-    auto s1 = do_test_subrange (test_subrange ());
-    auto s2 = do_test_subrange (test_partition ());
     do_test_list_partition ();
   }
+  auto tl = clock::now ();
+  
+  for (int i = 0; i < repeat; ++i)
+  {
+    do_test_vector_partition ();
+  }
+  auto tv = clock::now ();
+  
+  std::cout << "list took:   " << std::chrono::duration_cast<std::chrono::nanoseconds> (tl - ts).count () << " nanoseconds." << std::endl;
+  std::cout << "vector took: " << std::chrono::duration_cast<std::chrono::nanoseconds> (tv - ts).count () << " nanoseconds." << std::endl;
   return 0;
 }
