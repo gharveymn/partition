@@ -56,6 +56,12 @@
 #  endif
 #endif
 
+#ifndef GCH_TEMPLATE_AUTO
+#  if __cpp_nontype_template_parameter_auto >= 201606L
+#    define GCH_TEMPLATE_AUTO
+#  endif
+#endif
+
 namespace gch
 {
   
@@ -121,7 +127,7 @@ namespace gch
     
     template <std::ptrdiff_t Offset = 1>
     using next_type = typename partition_traits<partition_type>::
-    template subrange_type<index + Offset>;
+      template subrange_type<static_cast<std::ptrdiff_t> (index) + Offset>;
     
     template <std::ptrdiff_t Offset = 1>
     using prev_type = next_type<(-Offset)>;
@@ -315,6 +321,15 @@ namespace gch
   {
     return static_cast<const partition_element_t<Index, Partition>&&> (p);
   }
+
+#ifdef GCH_TEMPLATE_AUTO
+  template <auto EnumIndex, typename Partition,
+            std::enable_if<std::is_convertible_v<decltype (EnumIndex), std::size_t>> * = nullptr>
+  constexpr decltype (auto) get_subrange (Partition&& p) noexcept
+  {
+    return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<Partition> (p));
+  }
+#endif
   
   template <typename Subrange, std::ptrdiff_t Offset = 1>
   constexpr next_subrange_t<Subrange, Offset>&
@@ -939,7 +954,7 @@ namespace gch
                                                       std::make_index_sequence<Partition::size ()>>;
     using wrapper_type = detail::overload_wrapper<Fs...>;
     
-    using wrapper_type::overload_wrapper;
+    using detail::overload_wrapper<Fs...>::overload_wrapper;
     using impl_type::operator();
   };
   

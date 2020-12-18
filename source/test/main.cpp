@@ -1,6 +1,6 @@
 /** main.cpp
- * Short description here. 
- * 
+ * Short description here.
+ *
  * Copyright © 2020 Gene Harvey
  *
  * This software may be modified and distributed under the terms
@@ -687,7 +687,7 @@ void do_test_list_partition (void)
   std::cout << std::endl;
   
 #endif
-  
+
 }
 
 void do_test_vector_partition (void)
@@ -767,19 +767,100 @@ void do_test_vector_partition (void)
   
   for (const auto& e : p1)
   {
-    std::visit (partition_overload<decltype (p1)> ([] (auto&& arg) { std::cout << arg.size (); }), e);
+    std::visit (partition_overload<decltype (p1)> ([](auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
   
   for (const auto& e : p1)
   {
-    std::visit (partition_overload (p1, [] (auto&& arg) { std::cout << arg.size (); }), e);
+    std::visit (partition_overload (p1, [](auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
 
 #endif
-  
+
 }
+
+#ifdef GCH_TEMPLATE_AUTO
+
+enum class key
+{
+  first  = 0,
+  second = 1,
+  third  = 2,
+};
+
+enum class key1 : int
+{
+  first  = 0,
+  second = 1,
+  third  = 2,
+};
+
+enum key2
+{
+  first  = 0,
+  second = 1,
+  third  = 2,
+};
+
+enum key3 : int
+{
+  first1  = 0,
+  second1 = 1,
+  third1  = 2,
+};
+
+enum class key4
+{
+  first,
+  second,
+  third,
+  forth,
+  fifth,
+};
+
+enum key5
+{
+  first2,
+  second2,
+  third2,
+  forth2,
+  fifth2,
+};
+
+void do_test_enum_access (void)
+{
+  list_partition<int, 3> x;
+  get_subrange<key::first> (x).emplace_back (5);
+  get_subrange<key::first> (x).emplace_back (6);
+  get_subrange<key::third> (x).emplace_back (17);
+  get_subrange<key::second> (x).emplace_back (3);
+  get_subrange<key::second> (x).emplace_back (3);
+
+  std::for_each (x.data_begin (), x.data_end (), [](int e) { std::cout << e << std::endl; });
+
+  auto print = [](auto&& s) { std::for_each (s.begin (), s.end (),
+                                             [](int e)
+                                             {
+                                               std::cout << e << std::endl;
+                                             });
+                              std::cout << std::endl;
+                            };
+
+  print (get_subrange<'\0'> (x));
+  print (get_subrange<key1::first> (x));
+  print (get_subrange<first> (x));
+  print (get_subrange<first1> (x));
+  print (get_subrange<key4::first> (x));
+  print (get_subrange<first2> (x));
+  // print (get_subrange<key4::forth> (x));
+  // print (get_subrange<forth2> (x));
+  // print (get_subrange<key4::fifth> (x));
+  // print (get_subrange<fifth2> (x));
+}
+
+#endif
 
 const int repeat = 1;
 
@@ -804,5 +885,9 @@ int main (void)
   
   std::cout << "list took:   " << std::chrono::duration_cast<std::chrono::nanoseconds> (tl - ts).count () << " nanoseconds." << std::endl;
   std::cout << "vector took: " << std::chrono::duration_cast<std::chrono::nanoseconds> (tv - ts).count () << " nanoseconds." << std::endl;
+
+#ifdef GCH_TEMPLATE_AUTO
+  do_test_enum_access ();
+#endif
   return 0;
 }

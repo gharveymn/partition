@@ -1307,26 +1307,12 @@ namespace gch
     static constexpr std::size_t size (void) noexcept { return N; }
     
     template <typename ...Fs>
-    struct overloader
-      : partition_overloader<list_partition, Fs...>
-    {
-      using partition_overloader<list_partition, Fs...>::partition_overloader;
-      using partition_overloader<list_partition, Fs...>::operator();
-    };
-    
-    template <typename ...Fs>
     static constexpr auto overload (Fs&&... fs) noexcept
     {
-      return overloader<Fs...> (std::forward<Fs> (fs)...);
+      return partition_overloader<list_partition, Fs...> (std::forward<Fs> (fs)...);
     }
-    
-#ifdef GCH_COMPILER_CLANG
-    template <typename... Fs> overloader (Fs&&...) -> overloader<Fs...>;
+
 #endif
-    
-#endif
-    
-  private:
   };
   
   template <std::size_t Index, typename T, std::size_t N, typename Container>

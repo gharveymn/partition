@@ -236,7 +236,7 @@ namespace gch
     
     void clear (void) noexcept
     {
-      size_type sz = size ();
+      difference_type sz = size ();
       m_container.erase (cbegin (), cend ());
       next_subrange (*this).add_to_offset (-sz);
     }
@@ -570,7 +570,7 @@ namespace gch
     
     void clear (void) noexcept
     {
-      size_type sz = size ();
+      difference_type sz = size ();
       m_container.erase (cbegin (), cend ());
       modify_offsets (m_offset, -sz);
     }
@@ -711,7 +711,6 @@ namespace gch
         return;
       
       next_subrange (*this).add_to_offset (change);
-      //propagate_offset (pos_off, change);
     }
   
     void propagate_offset (size_type pos_off, difference_type change)
@@ -1131,18 +1130,9 @@ namespace gch
     [[nodiscard]] constexpr auto  crend   (void) const noexcept { return criter (cbegin ()); }
     
     template <typename ...Fs>
-    struct overloader
-      : partition_overloader<vector_partition, Fs...>
-    {
-      using partition_overloader<vector_partition, Fs...>::partition_overloader;
-    };
-  
-    template<typename... Fs> overloader (Fs&&...) -> overloader<Fs...>;
-    
-    template <typename ...Fs>
     static constexpr auto overload (Fs&&... fs) noexcept
     {
-      return overloader<Fs...> (std::forward<Fs> (fs)...);
+      return partition_overloader<vector_partition, Fs...> (std::forward<Fs> (fs)...);
     }
 
 #endif
