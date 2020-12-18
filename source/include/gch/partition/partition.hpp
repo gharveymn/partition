@@ -404,18 +404,20 @@ namespace gch
   class subrange_view
   {
   public:
+    using iterator  = Iterator;
+  
     using iter      = Iterator;
     using iter_diff = typename std::iterator_traits<iter>::difference_type;
     using iter_val  = typename std::iterator_traits<iter>::value_type;
     using iter_ptr  = typename std::iterator_traits<iter>::value_type;
     using iter_ref  = typename std::iterator_traits<iter>::value_type;
     
-    subrange_view            (void)                               = default;
+    subrange_view            (void)                     = default;
     subrange_view            (const subrange_view&)     = default;
     subrange_view            (subrange_view&&) noexcept = default;
     subrange_view& operator= (const subrange_view&)     = default;
     subrange_view& operator= (subrange_view&&) noexcept = default;
-    ~subrange_view           (void)                               = default;
+    ~subrange_view           (void)                     = default;
     
     subrange_view (iter first, iter last)
       : m_first (first),
@@ -426,10 +428,10 @@ namespace gch
     iter  end   (void) const noexcept { return m_last;  }
   
     iter_ref front (void) const noexcept { return *begin (); }
-    iter_ref back (void) const noexcept { return *(--end ()); }
+    iter_ref back  (void) const noexcept { return *(--end ()); }
     
-    std::size_t size (void) const noexcept { return std::distance (m_first, m_last); }
-    bool empty (void) const noexcept { return m_first == m_last; }
+    std::size_t size  (void) const noexcept { return std::distance (m_first, m_last); }
+    bool        empty (void) const noexcept { return m_first == m_last;               }
     
     GCH_NODISCARD subrange_view next (iter_diff count = 1) const &
     {

@@ -781,7 +781,7 @@ void do_test_vector_partition (void)
   
 }
 
-const int repeat = 100;
+const int repeat = 1;
 
 int main (void)
 {

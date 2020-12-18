@@ -315,16 +315,16 @@ namespace gch
       assign (std::make_move_iterator (other.begin ()), std::make_move_iterator (other.end ()));
       other.assign (std::make_move_iterator (tmp.begin ()), std::make_move_iterator (tmp.end ()));
     }
-    
+  
     void resize (size_type count)
     {
-      citer cit = resize_pos (count);
-      if (count)
+      std::pair<citer, size_type> pos = resize_pos (count);
+      if (pos.second != 0)
       {
         size_type idx = 0;
         try
         {
-          for (; idx < count; ++idx)
+          for (; idx < pos.second; ++idx)
             emplace_back ();
         }
         catch (...)
@@ -335,16 +335,16 @@ namespace gch
         }
       }
       else
-        erase (cit, cend ());
+        erase (pos.first, cend ());
     }
-    
+  
     void resize (size_type count, const value_type& val)
     {
-      citer cit = resize_pos (count);
-      if (count)
-        insert (cend (), count, val);
+      std::pair<citer, size_type> pos = resize_pos (count);
+      if (pos.second != 0)
+        insert (cend (), pos.second, val);
       else
-        erase (cit, cend ());
+        erase (pos.first, cend ());
     }
     
     subrange_view<iter> view (void)
@@ -362,8 +362,8 @@ namespace gch
     
   private:
     void propagate_offset (size_type, difference_type) { }
-    
-    citer resize_pos (size_type& count) const
+  
+    std::pair<citer, size_type> resize_pos (const size_type count) const
     {
       citer cit;
       const size_type len = size ();
@@ -380,12 +380,9 @@ namespace gch
           difference_type num_erase = len - count;
           std::advance (cit, -num_erase);
         }
-        count = 0;
-        return cit;
+        return { cit, 0 };
       }
-      cit = cend ();
-      count -= len;
-      return cit;
+      return { cend (), count - len };
     }
   };
   
@@ -650,16 +647,16 @@ namespace gch
       modify_offsets (cbegin (), 1);
       return *begin ();
     }
-    
+  
     void resize (size_type count)
     {
-      citer cit = resize_pos (count);
-      if (count)
+      std::pair<citer, size_type> pos = resize_pos (count);
+      if (pos.second != 0)
       {
         size_type idx = 0;
         try
         {
-          for (; idx < count; ++idx)
+          for (; idx < pos.second; ++idx)
             emplace_back ();
         }
         catch (...)
@@ -670,16 +667,16 @@ namespace gch
         }
       }
       else
-        erase (cit, cend ());
+        erase (pos.first, cend ());
     }
-    
+  
     void resize (size_type count, const value_type& val)
     {
-      citer cit = resize_pos (count);
-      if (count)
-        insert (cend (), count, val);
+      std::pair<citer, size_type> pos = resize_pos (count);
+      if (pos.second != 0)
+        insert (cend (), pos.second, val);
       else
-        erase (cit, cend ());
+        erase (pos.first, cend ());
     }
     
     template <std::size_t M, std::size_t Idx>
@@ -736,8 +733,8 @@ namespace gch
     {
       return it - m_container.cbegin ();
     }
-    
-    citer resize_pos (size_type& count) const
+  
+    std::pair<citer, size_type> resize_pos (const size_type count) const
     {
       citer cit;
       const size_type len = size ();
@@ -754,12 +751,9 @@ namespace gch
           difference_type num_erase = len - count;
           std::advance (cit, -num_erase);
         }
-        count = 0;
-        return cit;
+        return { cit, 0 };
       }
-      cit = cend ();
-      count -= len;
-      return cit;
+      return { cend (), count - len };
     }
     
     size_type m_offset = 0;
