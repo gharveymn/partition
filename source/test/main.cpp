@@ -453,7 +453,7 @@ void do_test_partition_view (void)
 
 template <std::size_t idx, typename T, std::size_t N, typename Container,
           template <typename, std::size_t, typename> class PartitionT>
-typename std::enable_if<(idx == N)>::type print_subrange (PartitionT<T, N, Container>& p)
+typename std::enable_if<(idx == N)>::type print_subrange (PartitionT<T, N, Container>&)
 {
   std::cout << std::endl;
 }
@@ -626,8 +626,10 @@ void do_test_list_partition (void)
   print_subrange_view (r22.view ());
   
   auto& parent_part = get_partition (r1);
+  static_cast<void> (parent_part);
   
   auto& r11 = prev_subrange (r2);
+  static_cast<void> (r11);
   
   list_partition<int, 5> p2;
   get_subrange<3> (p2).emplace_back (70);
@@ -656,6 +658,7 @@ void do_test_list_partition (void)
   
   partition_iterator<decltype (p1)> it = p1.begin ();
   partition_iterator<const decltype (p1)> cit = it;
+  static_cast<void> (cit);
   for (const auto& e : p1)
   {
     std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
@@ -717,8 +720,10 @@ void do_test_vector_partition (void)
   print_subrange_view (r22.view ());
   
   auto& parent_part = get_partition (r1);
+  static_cast<void> (parent_part);
   
   auto& r11 = prev_subrange (r2);
+  static_cast<void> (r11);
   
   vector_partition<int, 5> p2;
   get_subrange<3> (p2).emplace_back (70);
@@ -747,6 +752,7 @@ void do_test_vector_partition (void)
   
   partition_iterator<decltype (p1)> it = p1.begin ();
   partition_iterator<const decltype (p1)> cit = it;
+  static_cast<void> (cit);
   for (const auto& e : p1)
   {
     std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
@@ -780,8 +786,6 @@ void do_test_vector_partition (void)
 #endif
 
 }
-
-#ifdef GCH_TEMPLATE_AUTO
 
 enum class key
 {
@@ -831,6 +835,8 @@ enum key5
 
 void do_test_enum_access (void)
 {
+#ifdef GCH_TEMPLATE_AUTO
+  
   list_partition<int, 3> x;
   get_subrange<key::first> (x).emplace_back (5);
   get_subrange<key::first> (x).emplace_back (6);
@@ -858,9 +864,39 @@ void do_test_enum_access (void)
   // print (get_subrange<forth2> (x));
   // print (get_subrange<key4::fifth> (x));
   // print (get_subrange<fifth2> (x));
-}
+  
+#else
+
+  list_partition<int, 3> x;
+  get_subrange<key, key::first> (x).emplace_back (5);
+  get_subrange<key, key::first> (x).emplace_back (6);
+  get_subrange<key, key::third> (x).emplace_back (17);
+  get_subrange<key, key::second> (x).emplace_back (3);
+  get_subrange<key, key::second> (x).emplace_back (3);
+
+  std::for_each (x.data_begin (), x.data_end (), [](int e) { std::cout << e << std::endl; });
+
+  auto print = [](partition_element_t<0, decltype (x)>& s) { std::for_each (s.begin (), s.end (),
+                                             [](int e)
+                                             {
+                                               std::cout << e << std::endl;
+                                             });
+                              std::cout << std::endl;
+                            };
+  
+  print (get_subrange<char, '\0'> (x));
+  print (get_subrange<key1, key1::first> (x));
+  print (get_subrange<key2, first> (x));
+  print (get_subrange<key3, first1> (x));
+  print (get_subrange<key4, key4::first> (x));
+  print (get_subrange<key5, first2> (x));
+  // print (get_subrange<key4::forth> (x));
+  // print (get_subrange<forth2> (x));
+  // print (get_subrange<key4::fifth> (x));
+  // print (get_subrange<fifth2> (x));
 
 #endif
+}
 
 const int repeat = 1;
 

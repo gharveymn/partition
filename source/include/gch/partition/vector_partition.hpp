@@ -1,6 +1,6 @@
 /** vector_partition.hpp
- * Short description here. 
- * 
+ * Short description here.
+ *
  * Copyright © 2020 Gene Harvey
  *
  * This software may be modified and distributed under the terms
@@ -361,8 +361,6 @@ namespace gch
     constexpr size_type get_offset (void) const noexcept { return 0; }
     
   private:
-    void propagate_offset (size_type, difference_type) { }
-  
     std::pair<citer, size_type> resize_pos (const size_type count) const
     {
       citer cit;
@@ -445,10 +443,9 @@ namespace gch
         m_offset (other.m_offset + accum)
     { }
     
-    template <std::size_t M, std::size_t J, typename ...Subranges,
-      typename std::enable_if<(J == M)>::type * = nullptr>
+    template <std::size_t M, typename ...Subranges>
     vector_partition_subrange (size_type accum,
-                               const vector_partition_subrange<Container, M, J>& other,
+                               const vector_partition_subrange<Container, M, M>& other,
                                Subranges&&... subranges)
       : vector_partition_subrange (accum + other.m_container.size (),
                                    std::forward<Subranges> (subranges)...)
@@ -463,10 +460,9 @@ namespace gch
         m_offset (other.m_offset + accum)
     { }
     
-    template <std::size_t M, std::size_t J, typename ...Subranges,
-      typename std::enable_if<(J == M)>::type * = nullptr>
+    template <std::size_t M, typename ...Subranges>
     vector_partition_subrange (size_type accum,
-                               vector_partition_subrange<Container, M, J>&& other,
+                               vector_partition_subrange<Container, M, M>&& other,
                                Subranges&&... subranges)
       : vector_partition_subrange (accum + other.m_container.size (),
                                    std::forward<Subranges> (subranges)...)
@@ -572,42 +568,38 @@ namespace gch
     {
       difference_type sz = size ();
       m_container.erase (cbegin (), cend ());
-      modify_offsets (m_offset, -sz);
+      modify_offsets (-sz);
     }
     
     template <typename ...Args>
     iter insert (const citer pos, Args&&... args)
     {
-      size_type pos_off = compute_absolute_offset (pos);
       size_type sz = m_container.size ();
       iter ret = m_container.insert (pos, std::forward<Args> (args)...);
-      modify_offsets (pos_off, m_container.size () - sz);
+      modify_offsets (m_container.size () - sz);
       return ret;
     }
     
     template <typename ...Args>
     iter emplace (const citer pos, Args&&... args)
     {
-      size_type pos_off = compute_absolute_offset (pos);
       iter ret = m_container.emplace (pos, std::forward<Args> (args)...);
-      modify_offsets (pos_off, 1);
+      modify_offsets (1);
       return ret;
     }
     
     iter erase (const citer pos)
     {
-      size_type pos_off = compute_absolute_offset (pos);
       iter ret = m_container.erase (pos);
-      modify_offsets (pos_off, -1);
+      modify_offsets (-1);
       return ret;
     }
     
     iter erase (const citer first, const citer last)
     {
-      size_type pos_off      = compute_absolute_offset (first);
       difference_type change = std::distance (first, last);
       iter ret = m_container.erase (first, last);
-      modify_offsets (pos_off, -change);
+      modify_offsets (-change);
       return ret;
     }
     
@@ -616,15 +608,14 @@ namespace gch
     {
       size_type pos_off = next_subrange (*this).get_offset ();
       iter it = m_container.insert (cend (), std::forward<T> (val));
-      modify_offsets (pos_off, 1);
+      modify_offsets (1);
     }
     
     template <typename ...Args>
     ref emplace_back (Args&&... args)
     {
-      size_type pos_off = next_subrange (*this).get_offset ();
       iter ret = m_container.emplace (cend (), std::forward<Args> (args)...);
-      modify_offsets (pos_off, 1);
+      modify_offsets (1);
       return *ret;
     }
     
@@ -637,14 +628,14 @@ namespace gch
     void push_front (T&& val)
     {
       m_container.insert (cbegin (), std::forward<T> (val));
-      modify_offsets (cbegin (), 1);
+      modify_offsets (1);
     }
     
     template <typename ...Args>
     ref emplace_front (Args&&... args)
     {
       m_container.emplace (cbegin (), std::forward<Args> (args)...);
-      modify_offsets (cbegin (), 1);
+      modify_offsets (1);
       return *begin ();
     }
   
@@ -705,32 +696,18 @@ namespace gch
     constexpr size_type get_offset (void) const noexcept { return m_offset; }
     
   private:
-    void modify_offsets (size_type pos_off, difference_type change)
+    void modify_offsets (difference_type change)
     {
       if (change == 0)
         return;
       
       next_subrange (*this).add_to_offset (change);
     }
-  
-    void propagate_offset (size_type pos_off, difference_type change)
-    {
-      if (m_offset == pos_off)
-      {
-        prev_subrange (*this).propagate_offset (pos_off, change);
-        m_offset += change;
-      }
-    }
     
     void add_to_offset (difference_type change)
     {
       next_subrange (*this).add_to_offset (change);
       m_offset += change;
-    }
-    
-    GCH_CPP17_CONSTEXPR size_type compute_absolute_offset (citer it) const noexcept
-    {
-      return it - m_container.cbegin ();
     }
   
     std::pair<citer, size_type> resize_pos (const size_type count) const
@@ -814,17 +791,15 @@ namespace gch
   protected:
     template <std::size_t M>
     GCH_CPP20_CONSTEXPR
-    vector_partition_subrange (size_type,
-                               const vector_partition_subrange<container_type, M, M>& other)
-      GCH_CPP17_NOEXCEPT
+    vector_partition_subrange (size_type, const vector_partition_subrange<container_type, M, M>&)
+          GCH_CPP17_NOEXCEPT
       : m_container { }
     { }
     
     template <std::size_t M>
     GCH_CPP20_CONSTEXPR
-    vector_partition_subrange (size_type,
-                               vector_partition_subrange<container_type, M, M>&& other)
-      GCH_CPP17_NOEXCEPT
+    vector_partition_subrange (size_type, vector_partition_subrange<container_type, M, M>&&)
+          GCH_CPP17_NOEXCEPT
       : m_container { }
     { }
   

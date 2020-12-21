@@ -1,6 +1,6 @@
 /** list_partition.hpp
- * Short description here. 
- * 
+ * Short description here.
+ *
  * Copyright © 2020 Gene Harvey
  *
  * This software may be modified and distributed under the terms
@@ -556,9 +556,8 @@ namespace gch
                             std::distance (other.m_container.begin (), other.begin ())))
     { }
   
-    template <std::size_t M, std::size_t J, typename ...Subranges,
-      typename std::enable_if<(J == M)>::type * = nullptr>
-    list_partition_subrange (const list_partition_subrange<Container, M, J>& other,
+    template <std::size_t M, typename ...Subranges>
+    list_partition_subrange (const list_partition_subrange<Container, M, M>& other,
                              Subranges&&... subranges)
       : list_partition_subrange (std::forward<Subranges> (subranges)...)
     {
@@ -574,9 +573,8 @@ namespace gch
         m_first (other.begin ())
     { }
   
-    template <std::size_t M, std::size_t J, typename ...Subranges,
-              typename std::enable_if<(J == M)>::type * = nullptr>
-    list_partition_subrange (list_partition_subrange<Container, M, J>&& other,
+    template <std::size_t M, typename ...Subranges>
+    list_partition_subrange (list_partition_subrange<Container, M, M>&& other,
                              Subranges&&... subranges)
       : list_partition_subrange (std::forward<Subranges> (subranges)...)
     {
@@ -1072,7 +1070,7 @@ namespace gch
       return m_container.max_size ();
     }
   
-    subrange_view<iter>  view (void)        = delete;
+    subrange_view<iter>  view (void)       = delete;
     subrange_view<citer> view (void) const = delete;
   protected:
     container_type m_container;

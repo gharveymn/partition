@@ -4,19 +4,19 @@ ADD_EXECUTABLE(test_partition main.cpp)
 TARGET_LINK_LIBRARIES(test_partition partition)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  TARGET_COMPILE_OPTIONS(test_partition PUBLIC "-stdlib=libc++" "-ftime-trace")
-  TARGET_LINK_OPTIONS(test_partition PUBLIC "-Wl,--allow-multiple-definition")
-  TARGET_LINK_LIBRARIES(test_partition -lc++ -lc++abi)
+  TARGET_COMPILE_OPTIONS(test_partition PUBLIC -stdlib=libc++ -ftime-trace --coverage -Wall -Wextra)
+  TARGET_LINK_OPTIONS(test_partition PUBLIC -Wl,--allow-multiple-definition --coverage)
+  TARGET_LINK_LIBRARIES(test_partition c++ c++abi)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+  TARGET_COMPILE_OPTIONS(test_partition PUBLIC -Wall -Wextra)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-  # using Intel C++
+  TARGET_COMPILE_OPTIONS(test_partition PUBLIC /W4)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   # using Visual Studio C++
 endif()
 
 SET_TARGET_PROPERTIES(test_partition PROPERTIES
-                      CXX_STANDARD          17
+                      CXX_STANDARD          11
                       CXX_STANDARD_REQUIRED NO
                       CXX_EXTENSIONS        NO)
 

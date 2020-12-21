@@ -1,6 +1,6 @@
 /** partition.hpp
- * Short description here. 
- * 
+ * Short description here.
+ *
  * Copyright © 2020 Gene Harvey
  *
  * This software may be modified and distributed under the terms
@@ -323,12 +323,47 @@ namespace gch
   }
 
 #ifdef GCH_TEMPLATE_AUTO
+
   template <auto EnumIndex, typename Partition,
-            std::enable_if<std::is_convertible_v<decltype (EnumIndex), std::size_t>> * = nullptr>
+            std::enable_if_t<
+              std::is_enum_v<decltype (EnumIndex)> &&
+              std::is_convertible_v<std::underlying_type_t<decltype (EnumIndex)>,
+                                    std::size_t>> * = nullptr>
   constexpr decltype (auto) get_subrange (Partition&& p) noexcept
   {
     return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<Partition> (p));
   }
+  
+  template <auto EnumIndex, typename Partition,
+            std::enable_if_t<! std::is_enum_v<decltype (EnumIndex)> &&
+                             std::is_convertible_v<decltype (EnumIndex), std::size_t>> * = nullptr>
+  constexpr decltype (auto) get_subrange (Partition&& p) noexcept
+  {
+    return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<Partition> (p));
+  }
+  
+#else
+
+  template <typename T, T Index, typename Partition,
+            typename std::enable_if<
+                std::is_enum<T>::value &&
+                std::is_convertible<
+                  typename std::underlying_type<T>::type, std::size_t>::value>::type * = nullptr>
+  constexpr auto get_subrange (Partition&& p) noexcept
+    -> decltype (get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p)))
+  {
+    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p));
+  }
+  
+  template <typename T, T Index, typename Partition,
+    typename std::enable_if<! std::is_enum<T>::value &&
+                            std::is_convertible<T, std::size_t>::value>::type * = nullptr>
+  constexpr auto get_subrange (Partition&& p) noexcept
+    -> decltype (get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p)))
+  {
+    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p));
+  }
+  
 #endif
   
   template <typename Subrange, std::ptrdiff_t Offset = 1>
@@ -686,7 +721,7 @@ namespace gch
   
     template <std::size_t Index>
     typename std::enable_if<(Index == partition_traits<partition_type>::num_subranges)>::type
-    init_views (const partition_type& p) { }
+    init_views (const partition_type&) { }
     
     view_array m_subrange_views;
   };
@@ -1014,7 +1049,7 @@ namespace gch
   }
 
 #endif
-  
+
 };
 
 namespace std
