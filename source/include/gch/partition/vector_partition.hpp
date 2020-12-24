@@ -13,6 +13,7 @@
 #include "partition.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 #include <vector>
 
 #ifndef GCH_CPP14_CONSTEXPR
@@ -84,12 +85,16 @@ namespace gch
     using value_type              = typename container_type::value_type;
     using allocator_type          = typename container_type::allocator_type;
   
-    using iter   = iterator;
-    using citer  = const_iterator;
-    using riter  = reverse_iterator;
-    using criter = const_reverse_iterator;
-    using ref    = reference;
-    using cref   = const_reference;
+    using iter    = iterator;
+    using citer   = const_iterator;
+    using riter   = reverse_iterator;
+    using criter  = const_reverse_iterator;
+    using ref     = reference;
+    using cref    = const_reference;
+    using val_t   = value_type;
+    using size_t  = size_type;
+    using diff_t  = difference_type;
+    using alloc_t = allocator_type;
     
     using partition_type = vector_partition<value_type, N, container_type>;
     using subrange_type  = vector_partition_subrange<container_type, N, 0>;
@@ -172,7 +177,7 @@ namespace gch
     
     explicit vector_partition_subrange (iter) { }
     
-    void assign (size_type count, const value_type& val)
+    void assign (size_t count, const value_type& val)
     {
       iter it = begin ();
       for (; it != end () && count != 0; ++it, --count)
@@ -236,7 +241,7 @@ namespace gch
     
     void clear (void) noexcept
     {
-      difference_type sz = size ();
+      diff_t sz = size ();
       m_container.erase (cbegin (), cend ());
       next_subrange (*this).add_to_offset (-sz);
     }
@@ -244,7 +249,7 @@ namespace gch
     template <typename ...Args>
     iter insert (const citer pos, Args&&... args)
     {
-      size_type sz = m_container.size ();
+      size_t sz = m_container.size ();
       iter ret = m_container.insert (pos, std::forward<Args> (args)...);
       next_subrange (*this).add_to_offset (m_container.size () - sz);
       return ret;
@@ -316,12 +321,12 @@ namespace gch
       other.assign (std::make_move_iterator (tmp.begin ()), std::make_move_iterator (tmp.end ()));
     }
   
-    void resize (size_type count)
+    void resize (size_t count)
     {
-      std::pair<citer, size_type> pos = resize_pos (count);
+      std::pair<citer, size_t> pos = resize_pos (count);
       if (pos.second != 0)
       {
-        size_type idx = 0;
+        size_t idx = 0;
         try
         {
           for (; idx < pos.second; ++idx)
@@ -338,9 +343,9 @@ namespace gch
         erase (pos.first, cend ());
     }
   
-    void resize (size_type count, const value_type& val)
+    void resize (size_t count, const value_type& val)
     {
-      std::pair<citer, size_type> pos = resize_pos (count);
+      std::pair<citer, size_t> pos = resize_pos (count);
       if (pos.second != 0)
         insert (cend (), pos.second, val);
       else
@@ -357,14 +362,23 @@ namespace gch
       return { begin (), end () };
     }
     
+    iter advance_begin (diff_t) = delete;
+  
+    iter advance_end (diff_t change)
+    {
+      return next_subrange (*this).advance_begin (change);
+    }
+    
   protected:
-    constexpr size_type get_offset (void) const noexcept { return 0; }
+    constexpr size_t get_offset (void) const noexcept { return 0; }
     
   private:
-    std::pair<citer, size_type> resize_pos (const size_type count) const
+    static void propagate_offset_left (size_t) noexcept { }
+    
+    std::pair<citer, size_t> resize_pos (const size_t count) const
     {
       citer cit;
-      const size_type len = size ();
+      const size_t len = size ();
       if (count < len)
       {
         if (count <= len / 2)
@@ -375,7 +389,7 @@ namespace gch
         else
         {
           cit = cend ();
-          difference_type num_erase = len - count;
+          diff_t num_erase = len - count;
           std::advance (cit, -num_erase);
         }
         return { cit, 0 };
@@ -406,12 +420,16 @@ namespace gch
     using value_type              = typename container_type::value_type;
     using allocator_type          = typename container_type::allocator_type;
   
-    using iter   = iterator;
-    using citer  = const_iterator;
-    using riter  = reverse_iterator;
-    using criter = const_reverse_iterator;
-    using ref    = reference;
-    using cref   = const_reference;
+    using iter    = iterator;
+    using citer   = const_iterator;
+    using riter   = reverse_iterator;
+    using criter  = const_reverse_iterator;
+    using ref     = reference;
+    using cref    = const_reference;
+    using val_t   = value_type;
+    using size_t  = size_type;
+    using diff_t  = difference_type;
+    using alloc_t = allocator_type;
     
     using partition_type = vector_partition<value_type, N, container_type>;
     using subrange_type  = vector_partition_subrange<container_type, N, Index>;
@@ -436,7 +454,7 @@ namespace gch
   protected:
     template <std::size_t M, std::size_t J, typename ...Subranges,
       typename std::enable_if<(J < M)>::type * = nullptr>
-    vector_partition_subrange (size_type accum,
+    vector_partition_subrange (size_t accum,
                                const vector_partition_subrange<Container, M, J>& other,
                                Subranges&&... subranges)
       : next_type (accum, next_subrange (other), std::forward<Subranges> (subranges)...),
@@ -444,7 +462,7 @@ namespace gch
     { }
     
     template <std::size_t M, typename ...Subranges>
-    vector_partition_subrange (size_type accum,
+    vector_partition_subrange (size_t accum,
                                const vector_partition_subrange<Container, M, M>& other,
                                Subranges&&... subranges)
       : vector_partition_subrange (accum + other.m_container.size (),
@@ -453,7 +471,7 @@ namespace gch
     
     template <std::size_t M, std::size_t J, typename ...Subranges,
       typename std::enable_if<(J < M)>::type * = nullptr>
-    vector_partition_subrange (size_type accum,
+    vector_partition_subrange (size_t accum,
                                vector_partition_subrange<Container, M, J>&& other,
                                Subranges&&... subranges)
       : next_type (accum, next_subrange (other), std::forward<Subranges> (subranges)...),
@@ -461,7 +479,7 @@ namespace gch
     { }
     
     template <std::size_t M, typename ...Subranges>
-    vector_partition_subrange (size_type accum,
+    vector_partition_subrange (size_t accum,
                                vector_partition_subrange<Container, M, M>&& other,
                                Subranges&&... subranges)
       : vector_partition_subrange (accum + other.m_container.size (),
@@ -469,7 +487,7 @@ namespace gch
     { }
     
     template <typename T, std::size_t M, typename ...Subranges>
-    constexpr vector_partition_subrange (size_type accum,
+    constexpr vector_partition_subrange (size_t accum,
                                          vector_partition<T, M, Container>&& partition,
                                          Subranges&&... subranges)
       : vector_partition_subrange (accum, get_subrange<0> (partition),
@@ -477,7 +495,7 @@ namespace gch
     { }
     
     template <typename T, std::size_t M, typename ...Subranges>
-    constexpr vector_partition_subrange (size_type accum,
+    constexpr vector_partition_subrange (size_t accum,
                                          const vector_partition<T, M, Container>& partition,
                                          Subranges&&... subranges)
       : vector_partition_subrange (accum, get_subrange<0> (partition),
@@ -502,7 +520,7 @@ namespace gch
       return *this;
     }
     
-    void assign (size_type count, const value_type& val)
+    void assign (size_t count, const value_type& val)
     {
       iter it = begin ();
       for (; it != end () && count != 0; ++it, --count)
@@ -566,7 +584,7 @@ namespace gch
     
     void clear (void) noexcept
     {
-      difference_type sz = size ();
+      diff_t sz = size ();
       m_container.erase (cbegin (), cend ());
       modify_offsets (-sz);
     }
@@ -574,7 +592,7 @@ namespace gch
     template <typename ...Args>
     iter insert (const citer pos, Args&&... args)
     {
-      size_type sz = m_container.size ();
+      size_t sz = m_container.size ();
       iter ret = m_container.insert (pos, std::forward<Args> (args)...);
       modify_offsets (m_container.size () - sz);
       return ret;
@@ -597,7 +615,7 @@ namespace gch
     
     iter erase (const citer first, const citer last)
     {
-      difference_type change = std::distance (first, last);
+      diff_t change = std::distance (first, last);
       iter ret = m_container.erase (first, last);
       modify_offsets (-change);
       return ret;
@@ -606,7 +624,7 @@ namespace gch
     template <typename T>
     void push_back (T&& val)
     {
-      size_type pos_off = next_subrange (*this).get_offset ();
+      size_t pos_off = next_subrange (*this).get_offset ();
       iter it = m_container.insert (cend (), std::forward<T> (val));
       modify_offsets (1);
     }
@@ -639,12 +657,12 @@ namespace gch
       return *begin ();
     }
   
-    void resize (size_type count)
+    void resize (size_t count)
     {
-      std::pair<citer, size_type> pos = resize_pos (count);
+      std::pair<citer, size_t> pos = resize_pos (count);
       if (pos.second != 0)
       {
-        size_type idx = 0;
+        size_t idx = 0;
         try
         {
           for (; idx < pos.second; ++idx)
@@ -661,9 +679,9 @@ namespace gch
         erase (pos.first, cend ());
     }
   
-    void resize (size_type count, const value_type& val)
+    void resize (size_t count, const value_type& val)
     {
-      std::pair<citer, size_type> pos = resize_pos (count);
+      std::pair<citer, size_t> pos = resize_pos (count);
       if (pos.second != 0)
         insert (cend (), pos.second, val);
       else
@@ -691,12 +709,35 @@ namespace gch
     {
       return { begin (), end () };
     }
+    
+    iter advance_begin (diff_t change)
+    {
+      // first case: past end, second case: past begin
+      if (m_offset + change > m_container.size () || -change > static_cast<diff_t> (m_offset))
+        throw std::out_of_range ("requested change of subrange offset is out of range");
+      
+      m_offset += change;
+      if (change > 0)
+        next_subrange (*this).propagate_offset_right (m_offset);
+      else
+        prev_subrange (*this).propagate_offset_left (m_offset);
+      return begin ();
+    }
+  
+    template <std::size_t J = Index, typename std::enable_if<(J < N - 1)>::type * = nullptr>
+    iter advance_end (diff_t change)
+    {
+      return next_subrange (*this).advance_begin (change);
+    }
+  
+    template <std::size_t J = Index, typename std::enable_if<(J == N - 1)>::type * = nullptr>
+    iter advance_end (diff_t change) = delete;
 
   protected:
-    constexpr size_type get_offset (void) const noexcept { return m_offset; }
+    constexpr size_t get_offset (void) const noexcept { return m_offset; }
     
   private:
-    void modify_offsets (difference_type change)
+    void modify_offsets (diff_t change)
     {
       if (change == 0)
         return;
@@ -704,16 +745,34 @@ namespace gch
       next_subrange (*this).add_to_offset (change);
     }
     
-    void add_to_offset (difference_type change)
+    void add_to_offset (diff_t change)
     {
       next_subrange (*this).add_to_offset (change);
       m_offset += change;
     }
   
-    std::pair<citer, size_type> resize_pos (const size_type count) const
+    void propagate_offset_left (size_t pos_off) noexcept
+    {
+      if (m_offset > pos_off)
+      {
+        m_offset = pos_off;
+        prev_subrange (*this).propagate_offset_left (pos_off);
+      }
+    }
+  
+    void propagate_offset_right (size_t pos_off) noexcept
+    {
+      if (m_offset < pos_off)
+      {
+        m_offset = pos_off;
+        next_subrange (*this).propagate_offset_right (pos_off);
+      }
+    }
+  
+    std::pair<citer, size_t> resize_pos (const size_t count) const
     {
       citer cit;
-      const size_type len = size ();
+      const size_t len = size ();
       if (count < len)
       {
         if (count <= len / 2)
@@ -724,7 +783,7 @@ namespace gch
         else
         {
           cit = cend ();
-          difference_type num_erase = len - count;
+          diff_t num_erase = len - count;
           std::advance (cit, -num_erase);
         }
         return { cit, 0 };
@@ -732,7 +791,7 @@ namespace gch
       return { cend (), count - len };
     }
     
-    size_type m_offset = 0;
+    size_t m_offset = 0;
   };
   
   // end case holds the actual container
@@ -756,12 +815,16 @@ namespace gch
     using value_type              = typename container_type::value_type;
     using allocator_type          = typename container_type::allocator_type;
   
-    using iter   = iterator;
-    using citer  = const_iterator;
-    using riter  = reverse_iterator;
-    using criter = const_reverse_iterator;
-    using ref    = reference;
-    using cref   = const_reference;
+    using iter    = iterator;
+    using citer   = const_iterator;
+    using riter   = reverse_iterator;
+    using criter  = const_reverse_iterator;
+    using ref     = reference;
+    using cref    = const_reference;
+    using val_t   = value_type;
+    using size_t  = size_type;
+    using diff_t  = difference_type;
+    using alloc_t = allocator_type;
     
     using partition_type = vector_partition<value_type, N, container_type>;
     using subrange_type  = vector_partition_subrange<container_type, N, N>;
@@ -791,14 +854,14 @@ namespace gch
   protected:
     template <std::size_t M>
     GCH_CPP20_CONSTEXPR
-    vector_partition_subrange (size_type, const vector_partition_subrange<container_type, M, M>&)
+    vector_partition_subrange (size_t, const vector_partition_subrange<container_type, M, M>&)
           GCH_CPP17_NOEXCEPT
       : m_container { }
     { }
     
     template <std::size_t M>
     GCH_CPP20_CONSTEXPR
-    vector_partition_subrange (size_type, vector_partition_subrange<container_type, M, M>&&)
+    vector_partition_subrange (size_t, vector_partition_subrange<container_type, M, M>&&)
           GCH_CPP17_NOEXCEPT
       : m_container { }
     { }
@@ -836,19 +899,23 @@ namespace gch
       return m_container.get_allocator ();
     }
   
-    GCH_NODISCARD GCH_CPP20_CONSTEXPR size_type max_size (void) const noexcept
+    GCH_NODISCARD GCH_CPP20_CONSTEXPR size_t max_size (void) const noexcept
     {
       return m_container.max_size ();
     }
     
     subrange_view<iter>  view (void)       = delete;
     subrange_view<citer> view (void) const = delete;
+  
+    iter advance_begin (diff_t) = delete;
+    iter advance_end   (diff_t) = delete;
 
   protected:
-    constexpr size_type get_offset (void) const noexcept { return m_container.size (); }
+    constexpr size_t get_offset (void) const noexcept { return m_container.size (); }
     
   private:
-    static void add_to_offset (difference_type) noexcept { }
+    static void add_to_offset          (diff_t) noexcept { }
+    static void propagate_offset_right (size_t) noexcept { }
     
   protected:
     container_type m_container;
@@ -871,7 +938,7 @@ namespace gch
   }
   
   template <typename C, std::size_t N, std::size_t Idx, typename T>
-  typename vector_partition_subrange<C, N, Idx>::size_type
+  typename vector_partition_subrange<C, N, Idx>::size_t
   erase (vector_partition_subrange<C, N, Idx>& c, const T& val)
   {
     auto it = std::remove (c.begin (), c.end (), val);
@@ -881,7 +948,7 @@ namespace gch
   }
   
   template <typename C, std::size_t N, std::size_t Idx, typename Pred>
-  typename vector_partition_subrange<C, N, Idx>::size_type
+  typename vector_partition_subrange<C, N, Idx>::size_t
   erase (vector_partition_subrange<C, N, Idx>& c, Pred pred)
   {
     auto it = std::remove_if (c.begin(), c.end(), pred);
@@ -899,16 +966,16 @@ namespace gch
     using value_type      = T;
     using container_type  = Container;
     
-    using data_iter       = typename container_type::iterator;
-    using data_citer      = typename container_type::const_iterator;
-    using data_riter      = typename container_type::reverse_iterator;
-    using data_criter     = typename container_type::const_reverse_iterator;
-    using data_ref        = typename container_type::reference;
-    using data_cref       = typename container_type::const_reference;
-    using data_size_type  = typename container_type::size_type;
-    using data_diff_type  = typename container_type::difference_type;
-    using data_value_type = typename container_type::value_type;
-    using data_alloc_type = typename container_type::allocator_type;
+    using data_iter    = typename container_type::iterator;
+    using data_citer   = typename container_type::const_iterator;
+    using data_riter   = typename container_type::reverse_iterator;
+    using data_criter  = typename container_type::const_reverse_iterator;
+    using data_ref     = typename container_type::reference;
+    using data_cref    = typename container_type::const_reference;
+    using data_size_t  = typename container_type::size_type;
+    using data_diff_t  = typename container_type::difference_type;
+    using data_value_t = typename container_type::value_type;
+    using data_alloc_t = typename container_type::allocator_type;
   
     using first_type = vector_partition_subrange<Container, N, 0>;
     using last_type  = vector_partition_subrange<Container, N, N>;
@@ -960,10 +1027,10 @@ namespace gch
       construct (std::forward<Partitions> (ps)...);
     }
   
-    void construct (void) const noexcept { }
+    static void construct (void) noexcept { }
 
   public:
-    constexpr explicit vector_partition (const data_alloc_type& alloc)
+    constexpr explicit vector_partition (const data_alloc_t& alloc)
       : first_type (alloc)
     { }
     
@@ -1046,7 +1113,7 @@ namespace gch
     data_ref&   data_back    (void)       noexcept { return m_container.back ();    }
     data_cref&  data_back    (void) const noexcept { return m_container.back ();    }
     
-    data_size_type data_size (void) const noexcept { return m_container.size (); }
+    data_size_t data_size (void) const noexcept { return m_container.size (); }
     GCH_NODISCARD bool data_empty (void) const noexcept { return m_container.empty (); }
     
     gch::subrange_view<data_iter> data_view (void)
@@ -1079,6 +1146,20 @@ namespace gch
     gch::subrange_view<data_citer> subrange_view (void) const
     {
       return get_subrange<Idx> (*this).view ();
+    }
+  
+    template <std::size_t Index,
+              typename = typename std::enable_if<(0 < Index) && (Index < N)>::type>
+    data_iter advance_begin (data_diff_t change)
+    {
+      return get_subrange<Index> (*this).advance_begin (change);
+    }
+  
+    template <std::size_t Index,
+              typename = typename std::enable_if<(Index < N)>::type>
+    data_iter advance_end (data_diff_t change)
+    {
+      return get_subrange<Index> (*this).advance_end (change);
     }
 
 #ifdef GCH_PARTITION_ITERATOR
@@ -1114,34 +1195,6 @@ namespace gch
   
   private:
   };
-  
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (vector_partition<T, N, Container>& p) noexcept
-  -> decltype (get_subrange<Index> (p))
-  {
-    return get_subrange<Index> (p);
-  }
-  
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (const vector_partition<T, N, Container>& p) noexcept
-  -> decltype (get_subrange<Index> (p))
-  {
-    return get_subrange<Index> (p);
-  }
-  
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (vector_partition<T, N, Container>&& p) noexcept
-  -> decltype (get_subrange<Index> (p))
-  {
-    return get_subrange<Index> (p);
-  }
-  
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (const vector_partition<T, N, Container>&& p) noexcept
-  -> decltype (get_subrange<Index> (p))
-  {
-    return get_subrange<Index> (p);
-  }
   
   template <typename T, typename Container, typename ...Partitions>
   vector_partition<T, total_subranges<Partitions...>::value, Container>

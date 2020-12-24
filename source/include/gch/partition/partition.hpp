@@ -84,19 +84,19 @@ namespace gch
     using value_type      = typename partition_type::value_type;
     using container_type  = typename partition_type::container_type;
     
-    using data_iter       = typename partition_type::data_iter;
-    using data_citer      = typename partition_type::data_citer;
-    using data_riter      = typename partition_type::data_riter;
-    using data_criter     = typename partition_type::data_criter;
-    using data_ref        = typename partition_type::data_ref;
-    using data_cref       = typename partition_type::data_cref;
-    using data_size_type  = typename partition_type::data_size_type;
-    using data_diff_type  = typename partition_type::data_diff_type;
-    using data_value_type = typename partition_type::data_value_type;
-    using data_alloc_type = typename partition_type::data_alloc_type;
+    using data_iter    = typename partition_type::data_iter;
+    using data_citer   = typename partition_type::data_citer;
+    using data_riter   = typename partition_type::data_riter;
+    using data_criter  = typename partition_type::data_criter;
+    using data_ref     = typename partition_type::data_ref;
+    using data_cref    = typename partition_type::data_cref;
+    using data_size_t  = typename partition_type::data_size_t;
+    using data_diff_t  = typename partition_type::data_diff_t;
+    using data_value_t = typename partition_type::data_value_t;
+    using data_alloc_t = typename partition_type::data_alloc_t;
     
-    using first_type      = typename partition_type::first_type;
-    using last_type       = typename partition_type::last_type;
+    using first_type   = typename partition_type::first_type;
+    using last_type    = typename partition_type::last_type;
     
     template <std::size_t Index>
     using subrange_type = typename partition_type::template subrange_type<Index>;

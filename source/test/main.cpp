@@ -462,7 +462,7 @@ template <std::size_t idx, typename T, std::size_t N, typename Container,
           template <typename, std::size_t, typename> class PartitionT>
 typename std::enable_if<(idx < N)>::type print_subrange (PartitionT<T, N, Container>& p)
 {
-  auto& r = get<idx> (p);
+  auto& r = get_subrange<idx> (p);
   std::cout << "  [ ";
   if (! r.empty ())
   {
@@ -604,7 +604,7 @@ void do_test_list_partition (void)
   list_partition<int, 3> p1;
   auto& r1 = get_subrange<0> (p1);
   auto& r2 = get_subrange<1> (p1);
-  auto& r3 = get<2> (p1);
+  auto& r3 = get_subrange<2> (p1);
   
   r1.emplace_back (1);
   print_partition (p1);
@@ -652,6 +652,32 @@ void do_test_list_partition (void)
   auto cpv = y.partition_view ();
   print_partition_view (cpv);
   
+  std::cout << "advance begin: \n";
+  p4.advance_begin<2> (1);
+  print_partition_view (p4.partition_view ());
+  
+  std::cout << "advance end: \n";
+  p4.advance_end<9> (3);
+  print_partition_view (p4.partition_view ());
+  
+  try
+  {
+    p4.advance_end<9> (100);
+  }
+  catch (...)
+  {
+    std::cout << "past end exception successfully caught" << std::endl;
+  }
+  
+  try
+  {
+    p4.advance_begin<9> (-100);
+  }
+  catch (...)
+  {
+    std::cout << "past begin exception successfully caught" << std::endl;
+  }
+  
   std::cout << std::endl;
 
 #ifdef GCH_PARTITION_ITERATOR
@@ -698,7 +724,7 @@ void do_test_vector_partition (void)
   vector_partition<int, 3> p1;
   auto& r1 = get_subrange<0> (p1);
   auto& r2 = get_subrange<1> (p1);
-  auto& r3 = get<2> (p1);
+  auto& r3 = get_subrange<2> (p1);
   
   r1.emplace_back (1);
   print_partition (p1);
@@ -745,6 +771,32 @@ void do_test_vector_partition (void)
   const auto& y = p1;
   auto cpv = y.partition_view ();
   print_partition_view (cpv);
+  
+  std::cout << "advance begin: \n";
+  p4.advance_begin<2> (1);
+  print_partition_view (p4.partition_view ());
+  
+  std::cout << "advance end: \n";
+  p4.advance_end<9> (3);
+  print_partition_view (p4.partition_view ());
+  
+  try
+  {
+    p4.advance_end<9> (100);
+  }
+  catch (...)
+  {
+    std::cout << "past end exception successfully caught" << std::endl;
+  }
+  
+  try
+  {
+    p4.advance_begin<9> (-100);
+  }
+  catch (...)
+  {
+    std::cout << "past begin exception successfully caught" << std::endl;
+  }
   
   std::cout << std::endl;
 
