@@ -21,6 +21,20 @@
 #include <chrono>
 
 #if __cpp_concepts >= 201907L
+#  ifndef GCH_CONCEPTS
+#    define GCH_CONCEPTS
+#  endif
+#  if __has_include(<concepts>)
+#    include <concepts>
+#    if __cpp_lib_concepts >= 202002L
+#      ifndef GCH_LIB_CONCEPTS
+#        define GCH_LIB_CONCEPTS
+#      endif
+#    endif
+#  endif
+#endif
+
+#ifdef GCH_LIB_CONCEPTS
 
 template <typename T>
 concept referenceable = std::is_same_v<T&, std::add_lvalue_reference_t<T>>;

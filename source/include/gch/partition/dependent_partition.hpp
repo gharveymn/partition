@@ -1,6 +1,6 @@
 /** dependent_partition.hpp
- * Short description here. 
- * 
+ * Short description here.
+ *
  * Copyright © 2020 Gene Harvey
  *
  * This software may be modified and distributed under the terms
@@ -42,6 +42,20 @@
 #    define GCH_NODISCARD [[nodiscard]]
 #  else
 #    define GCH_NODISCARD
+#  endif
+#endif
+
+#if __cpp_impl_three_way_comparison >= 201907L
+#  ifndef GCH_IMPL_THREE_WAY_COMPARISON
+#    define GCH_IMPL_THREE_WAY_COMPARISON
+#  endif
+#  if __has_include(<compare>)
+#    include <compare>
+#    if __cpp_lib_three_way_comparison >= 201907L
+#      ifndef GCH_LIB_THREE_WAY_COMPARISON
+#        define GCH_LIB_THREE_WAY_COMPARISON
+#      endif
+#    endif
 #  endif
 #endif
 
@@ -278,7 +292,7 @@ namespace gch
       swap (m_subranges, other.m_subranges);
     }
 
-#if __cpp_lib_three_way_comparison >= 201907L
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
     
     GCH_NODISCARD
     friend constexpr bool operator== (const dependent_partition_view& lhs, const dependent_partition_view& rhs)
@@ -380,7 +394,7 @@ namespace gch
     std::array<subrange_type, N> m_subranges;
   };
 
-#if __cpp_lib_three_way_comparison >= 201907L
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
   
   template <typename Container>
   constexpr bool operator== (const dependent_subrange<Container>& lhs,

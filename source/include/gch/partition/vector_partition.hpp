@@ -55,6 +55,20 @@
 #  endif
 #endif
 
+#if __cpp_impl_three_way_comparison >= 201907L
+#  ifndef GCH_IMPL_THREE_WAY_COMPARISON
+#    define GCH_IMPL_THREE_WAY_COMPARISON
+#  endif
+#  if __has_include(<compare>)
+#    include <compare>
+#    if __cpp_lib_three_way_comparison >= 201907L
+#      ifndef GCH_LIB_THREE_WAY_COMPARISON
+#        define GCH_LIB_THREE_WAY_COMPARISON
+#      endif
+#    endif
+#  endif
+#endif
+
 namespace gch
 {
   template <typename Container, std::size_t N, std::size_t Index, typename Enable = void>
@@ -1150,44 +1164,7 @@ namespace gch
     return { std::forward<Partitions> (ps)... };
   }
 
-#if __cpp_lib_three_way_comparison >= 201907L
-  
-  namespace detail::compare
-  {
-    template <typename T>
-    concept boolean_testable_impl = std::convertible_to<T, bool>;
-    
-    template<typename T>
-    concept boolean_testable = boolean_testable_impl<T> &&
-      requires (T&& t)
-      {
-        { ! std::forward<T> (t) } -> boolean_testable_impl;
-      };
-    
-    static constexpr struct synth_three_way_functor
-    {
-      template <typename T, typename U>
-      constexpr auto operator() (const T& lhs, const U& rhs) noexcept (noexcept (lhs <=> rhs))
-        requires std::three_way_comparable_with<T, U> &&
-          requires
-          {
-            { lhs < rhs } -> boolean_testable;
-            { lhs < rhs } -> boolean_testable;
-          }
-      {
-        return lhs <=> rhs;
-      }
-      
-      template <typename T, typename U>
-      constexpr auto operator() (const T& lhs, const U& rhs)
-        requires (! std::three_way_comparable_with<T, U>)
-      {
-        return (lhs < rhs) ? std::weak_ordering::less
-                           : (rhs < lhs) ? std::weak_ordering::greater
-                                         : std::weak_ordering::equivalent;
-      }
-    } synth_three_way;
-  }
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
 
   template <typename Container, std::size_t N, std::size_t Idx1, std::size_t M, std::size_t Idx2>
   constexpr bool operator== (const vector_partition_subrange<Container, N, Idx1>& lhs,
@@ -1198,7 +1175,7 @@ namespace gch
   
   template <typename Container, std::size_t N, std::size_t Idx1, std::size_t M, std::size_t Idx2>
   bool operator<= (const vector_partition_subrange<Container, N, Idx1>& lhs,
-                    const vector_partition_subrange<Container, M, Idx2>& rhs)
+                   const vector_partition_subrange<Container, M, Idx2>& rhs)
   {
     return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
                                                    rhs.begin (), rhs.end (),

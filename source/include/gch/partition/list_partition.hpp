@@ -46,9 +46,17 @@
 #  endif
 #endif
 
-#ifndef GCH_COMPILER_CLANG
-#  ifdef __clang__
-#    define GCH_COMPILER_CLANG
+#if __cpp_impl_three_way_comparison >= 201907L
+#  ifndef GCH_IMPL_THREE_WAY_COMPARISON
+#    define GCH_IMPL_THREE_WAY_COMPARISON
+#  endif
+#  if __has_include(<compare>)
+#    include <compare>
+#    if __cpp_lib_three_way_comparison >= 201907L
+#      ifndef GCH_LIB_THREE_WAY_COMPARISON
+#        define GCH_LIB_THREE_WAY_COMPARISON
+#      endif
+#    endif
 #  endif
 #endif
 
@@ -1348,7 +1356,7 @@ namespace gch
     return { std::forward<Partitions> (ps)... };
   }
 
-#if __cpp_lib_three_way_comparison >= 201907L
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
 
   template <typename Container, std::size_t N, std::size_t Idx1, std::size_t M, std::size_t Idx2>
   constexpr bool operator== (const list_partition_subrange<Container, N, Idx1>& lhs,

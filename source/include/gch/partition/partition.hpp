@@ -13,13 +13,11 @@
 #include <array>
 #include <functional>
 
-#if __cplusplus >= 201703L
-#  if __has_include(<variant>)
-#    include <variant>
-#    if __cpp_lib_variant >= 201606L
-#      ifndef GCH_HAS_VARIANT
-#        define GCH_HAS_VARIANT
-#      endif
+#if __has_include(<variant>)
+#  include <variant>
+#  if __cpp_lib_variant >= 201606L
+#    ifndef GCH_HAS_VARIANT
+#      define GCH_HAS_VARIANT
 #    endif
 #  endif
 #endif
@@ -53,6 +51,20 @@
 #    define GCH_NODISCARD [[nodiscard]]
 #  else
 #    define GCH_NODISCARD
+#  endif
+#endif
+
+#if __cpp_impl_three_way_comparison >= 201907L
+#  ifndef GCH_IMPL_THREE_WAY_COMPARISON
+#    define GCH_IMPL_THREE_WAY_COMPARISON
+#  endif
+#  if __has_include(<compare>)
+#    include <compare>
+#    if __cpp_lib_three_way_comparison >= 201907L
+#      ifndef GCH_LIB_THREE_WAY_COMPARISON
+#        define GCH_LIB_THREE_WAY_COMPARISON
+#      endif
+#    endif
 #  endif
 #endif
 
@@ -138,10 +150,28 @@ namespace gch
     : std::integral_constant<std::size_t, partition_traits<Partition>::num_subranges>
   { };
   
-  template <std::size_t Index, typename Partition>
+  template <std::size_t I, typename P>
   struct partition_element
   {
-    using type = typename partition_traits<Partition>::template subrange_type<Index>;
+    using type = typename partition_traits<P>::template subrange_type<I>;
+  };
+  
+  template <std::size_t I, typename P>
+  struct partition_element<I, const P>
+  {
+    using type = typename std::add_const<typename partition_element<I, P>::type>::type;
+  };
+  
+  template <std::size_t I, typename P>
+  struct partition_element<I, volatile P>
+  {
+    using type = typename std::add_volatile<typename partition_element<I, P>::type>::type;
+  };
+  
+  template <std::size_t I, typename P>
+  struct partition_element<I, const volatile P>
+  {
+    using type = typename std::add_cv<typename partition_element<I, P>::type>::type;
   };
   
   namespace detail
@@ -459,8 +489,8 @@ namespace gch
     using iter      = Iterator;
     using iter_diff = typename std::iterator_traits<iter>::difference_type;
     using iter_val  = typename std::iterator_traits<iter>::value_type;
-    using iter_ptr  = typename std::iterator_traits<iter>::value_type;
-    using iter_ref  = typename std::iterator_traits<iter>::value_type;
+    using iter_ptr  = typename std::iterator_traits<iter>::pointer;
+    using iter_ref  = typename std::iterator_traits<iter>::reference;
     
     subrange_view            (void)                     = default;
     subrange_view            (const subrange_view&)     = default;
@@ -479,9 +509,9 @@ namespace gch
   
     iter_ref front (void) const noexcept { return *begin (); }
     iter_ref back  (void) const noexcept { return *(--end ()); }
-    
-    std::size_t size  (void) const noexcept { return std::distance (m_first, m_last); }
-    bool        empty (void) const noexcept { return m_first == m_last;               }
+  
+    GCH_NODISCARD std::size_t size  (void) const noexcept { return std::distance (m_first, m_last); }
+    GCH_NODISCARD bool        empty (void) const noexcept { return m_first == m_last;               }
     
     GCH_NODISCARD subrange_view next (iter_diff count = 1) const &
     {
@@ -655,7 +685,7 @@ namespace gch
       return std::get<Index> (m_subrange_views);
     }
 
-#if __cpp_lib_three_way_comparison >= 201907L
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
   
     GCH_NODISCARD
     friend constexpr bool operator== (const partition_view& lhs, const partition_view& rhs)
@@ -765,25 +795,23 @@ namespace gch
   using const_partition_view = partition_view<const Partition, N>;
   
 #ifdef GCH_HAS_VARIANT
-
 #  define GCH_PARTITION_ITERATOR
   
   template <typename Partition>
   class partition_iterator
   {
     template <typename IndexSequence>
-    struct find_variant;
+    struct find_variant_type;
     
     template <std::size_t ...Indices>
-    struct find_variant<std::index_sequence<Indices...>>
+    struct find_variant_type<std::index_sequence<Indices...>>
     {
-      using type = std::variant<std::reference_wrapper<
-        typename Partition::template subrange_type<Indices>>...>;
+      using type = std::variant<std::reference_wrapper<partition_element_t<Indices, Partition>>...>;
     };
   
   public:
     using subrange_indices = std::make_index_sequence<Partition::size ()>;
-    using variant_subrange = typename find_variant<subrange_indices>::type;
+    using variant_subrange = typename find_variant_type<subrange_indices>::type;
     
     using value_type        = variant_subrange;
     using reference         = variant_subrange;
@@ -902,12 +930,12 @@ namespace gch
       template <typename ...Ts,
                 typename = std::enable_if_t<std::conjunction_v<
                   std::is_same<std::decay_t<Ts>, std::decay_t<Fs>>...>>>
-      constexpr overload_wrapper (Ts&& ... fs) noexcept
+      constexpr overload_wrapper (Ts&&... fs) noexcept
         : Fs (std::forward<Ts> (fs))...
       { }
       
       template <typename T>
-      constexpr auto call (T&& t)
+      constexpr decltype (auto) call (T&& t) const
       {
         return operator() (std::forward<T> (t));
       }
@@ -920,49 +948,23 @@ namespace gch
     
     template <typename Partition, template <typename...> class DerivedT,
       std::size_t Idx, typename ...Fs>
-    struct subrange_overload<Partition, DerivedT<Fs...>, Idx>
+    struct subrange_overload<Partition, DerivedT<Partition, Fs...>, Idx>
     {
-      using derived_type = DerivedT<Fs...>;
-      using subrange_type = typename Partition::template subrange_type<Idx>;
-      
-      constexpr auto operator() (std::reference_wrapper<subrange_type>& r)
+      using derived_type  = DerivedT<Partition, Fs...>;
+      using subrange_type = partition_element_t<Idx, Partition>;
+      using wrapper_type  = overload_wrapper<Fs...>;
+  
+      template <typename T,
+        typename = std::enable_if_t<
+          std::is_same_v<std::decay_t<T>, std::reference_wrapper<subrange_type>>>>
+      constexpr decltype (auto) operator() (T&& r) const
       {
         return wrapper_cast (this)->call (r.get ());
       }
       
-      constexpr auto operator() (std::reference_wrapper<subrange_type>&& r)
+      static constexpr auto wrapper_cast (const subrange_overload *ptr)
       {
-        return wrapper_cast (this)->call (r.get ());
-      }
-      
-      constexpr auto operator() (const std::reference_wrapper<subrange_type>& r)
-      {
-        return wrapper_cast (this)->call (r.get ());
-      }
-      
-      constexpr auto operator() (const std::reference_wrapper<subrange_type>&& r)
-      {
-        return wrapper_cast (this)->call (r.get ());
-      }
-      
-      static constexpr auto up_cast (subrange_overload* ptr)
-      {
-        return static_cast<derived_type *> (ptr);
-      }
-      
-      static constexpr auto up_cast (const subrange_overload* ptr)
-      {
-        return static_cast<const derived_type *> (ptr);
-      }
-      
-      static constexpr auto wrapper_cast (subrange_overload* ptr)
-      {
-        return static_cast<typename derived_type::wrapper_type *> (up_cast (ptr));
-      }
-      
-      static constexpr auto wrapper_cast (const subrange_overload* ptr)
-      {
-        return static_cast<const typename derived_type::wrapper_type *> (up_cast (ptr));
+        return static_cast<const wrapper_type *> (static_cast<const derived_type *> (ptr));
       }
     };
     
@@ -977,20 +979,17 @@ namespace gch
       using subrange_overload<Partition, Derived, Indices>::operator()...;
     };
     
-  }
+  } // gch::detail
   
   template <typename Partition, typename ...Fs>
   struct partition_overloader
-    : detail::overload_wrapper<Fs>...,
+    : detail::overload_wrapper<Fs...>,
       detail::partition_overload_impl<Partition, partition_overloader<Partition, Fs...>,
                                       std::make_index_sequence<Partition::size ()>>
   {
-    using impl_type = detail::partition_overload_impl<Partition, partition_overloader,
-                                                      std::make_index_sequence<Partition::size ()>>;
-    using wrapper_type = detail::overload_wrapper<Fs...>;
-    
     using detail::overload_wrapper<Fs...>::overload_wrapper;
-    using impl_type::operator();
+    using detail::partition_overload_impl<Partition, partition_overloader,
+                                          std::make_index_sequence<Partition::size ()>>::operator();
   };
   
   template <typename Partition, typename ...Fs,
@@ -1009,48 +1008,36 @@ namespace gch
 
 #endif
 
-#if __cpp_lib_three_way_comparison >= 201907L
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
   
   namespace detail::compare
   {
-    template <typename T>
-    concept boolean_testable_impl = std::convertible_to<T, bool>;
-    
-    template<typename T>
-    concept boolean_testable = boolean_testable_impl<T> &&
-      requires (T&& t)
-      {
-        { ! std::forward<T> (t) } -> boolean_testable_impl;
-      };
     
     static constexpr struct synth_three_way_functor
     {
       template <typename T, typename U>
-      constexpr auto operator() (const T& lhs, const U& rhs) noexcept (noexcept (lhs <=> rhs))
-      requires std::three_way_comparable_with<T, U> &&
-        requires
-        {
-          { lhs < rhs } -> boolean_testable;
-          { lhs < rhs } -> boolean_testable;
-        }
+      constexpr auto operator() (const T& lhs, const U& rhs) const
+        noexcept (noexcept (lhs <=> rhs))
+        requires std::three_way_comparable_with<T, U>
       {
         return lhs <=> rhs;
       }
       
       template <typename T, typename U>
-      constexpr auto operator() (const T& lhs, const U& rhs)
-      requires (! std::three_way_comparable_with<T, U>)
+      constexpr auto operator() (const T& lhs, const U& rhs) const
+        requires (! std::three_way_comparable_with<T, U>)
       {
         return (lhs < rhs) ? std::weak_ordering::less
                            : (rhs < lhs) ? std::weak_ordering::greater
                                          : std::weak_ordering::equivalent;
       }
     } synth_three_way;
-  }
-
+    
+  } // namespace gch::detail::compare
+  
 #endif
 
-};
+} // namespace gch
 
 namespace std
 {
@@ -1062,7 +1049,7 @@ namespace std
   template <std::size_t I, typename Partition, std::size_t N>
   struct tuple_element<I, gch::partition_view<Partition, N>>
   {
-    using type = typename gch::partition_view<Partition, N>::subrange_type;
+    using type = typename gch::partition_view<Partition, N>::subrange_view_type;
   };
 }
 
