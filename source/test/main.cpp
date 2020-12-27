@@ -19,6 +19,7 @@
 #include <string>
 #include <iterator>
 #include <chrono>
+#include <forward_list>
 
 #if __cpp_concepts >= 201907L
 #  ifndef GCH_CONCEPTS
@@ -122,39 +123,39 @@ concept Container =
     typename C::const_iterator;
     typename C::difference_type;
     typename C::size_type;
-    
+
     requires std::same_as<typename C::value_type, T>;
     requires std::same_as<typename C::reference, T&>;
     requires std::same_as<typename C::const_reference, const T&>;
-  
+
     requires Erasable<T, C, A>;
-    
+
     requires LegacyForwardIterator<typename C::iterator> &&
              std::convertible_to<typename C::iterator,
                                  typename C::const_iterator>;
-    
+
     requires LegacyForwardIterator<typename C::const_iterator>;
-    
+
     requires std::signed_integral<typename C::difference_type> &&
              std::same_as<typename C::difference_type,
                typename std::iterator_traits<typename C::iterator>::difference_type> &&
              std::same_as<typename C::difference_type,
                typename std::iterator_traits<typename C::const_iterator>::difference_type>;
-  
+
     requires std::unsigned_integral<typename C::size_type> &&
              (std::numeric_limits<typename C::difference_type>::max () <=
                std::numeric_limits<typename C::size_type>::max ());
-    
+
     requires std::default_initializable<C>;
     requires std::copy_constructible<C>;
     requires std::equality_comparable<C>;
     requires std::swappable<C>;
-    
+
     requires CopyInsertable<T, C, A>;
     requires std::equality_comparable<T>;
     requires std::destructible<T>;
     requires std::signed_integral<typename C::difference_type>;
-  
+
     { C ()          } -> std::same_as<C>;
     { C (a)         } -> std::same_as<C>;
     { C (rv)        } -> std::same_as<C>;
@@ -172,7 +173,7 @@ concept Container =
     { a.size ()     } -> std::same_as<typename C::size_type>;
     { a.max_size () } -> std::same_as<typename C::size_type>;
     { a.empty ()    } -> std::convertible_to<bool>;
-  
+
     { const_cast<const C&> (a).begin () } -> std::same_as<typename C::const_iterator>;
     { const_cast<const C&> (a).end ()   } -> std::same_as<typename C::const_iterator>;
   };
@@ -187,11 +188,11 @@ concept AllocatorAwareContainer =
     typename X::allocator_type;
     requires std::same_as<typename X::allocator_type, A>;
     requires std::same_as<typename A::value_type, typename X::value_type>;
-    
+
     requires std::default_initializable<A>;
     requires CopyInsertable<T, X, A>;
     requires std::is_copy_assignable_v<X>;
-    
+
     { a.get_allocator ()            } -> std::same_as<A>;
     { X ()                          };
     { X (m)                         };
@@ -213,19 +214,30 @@ static_assert (Container<gch::list_partition_subrange<std::list<int>, 4, 1>, int
 
 namespace gch
 {
+  template <typename From, typename To>
+  using match_ref_t = typename std::conditional<std::is_lvalue_reference<From>::value,
+                                                typename std::add_lvalue_reference<To>::type,
+                                                typename std::conditional<
+                                                  std::is_rvalue_reference<From>::value,
+                                                  typename std::add_rvalue_reference<To>::type,
+                                                  To>::type
+                                               >::type;
+
   template class list_partition<std::string, 4>;
-  template class list_partition_subrange<std::list<std::string>, 4, 0>;
-  template class list_partition_subrange<std::list<std::string>, 4, 1>;
-  template class list_partition_subrange<std::list<std::string>, 4, 2>;
-  template class list_partition_subrange<std::list<std::string>, 4, 3>;
-  template class list_partition_subrange<std::list<std::string>, 4, 4>;
-  
+  template class partition_subrange<list_partition<std::string, 4>, 0>;
+  template class partition_subrange<list_partition<std::string, 4>, 1>;
+  template class partition_subrange<list_partition<std::string, 4>, 2>;
+  template class partition_subrange<list_partition<std::string, 4>, 3>;
+  template class partition_subrange<list_partition<std::string, 4>, 4>;
+
   template class vector_partition<std::string, 4>;
-  template class vector_partition_subrange<std::vector<std::string>, 4, 0>;
-  template class vector_partition_subrange<std::vector<std::string>, 4, 1>;
-  template class vector_partition_subrange<std::vector<std::string>, 4, 2>;
-  template class vector_partition_subrange<std::vector<std::string>, 4, 3>;
-  template class vector_partition_subrange<std::vector<std::string>, 4, 4>;
+  template class partition_subrange<vector_partition<std::string, 4>, 0>;
+  template class partition_subrange<vector_partition<std::string, 4>, 1>;
+  template class partition_subrange<vector_partition<std::string, 4>, 2>;
+  template class partition_subrange<vector_partition<std::string, 4>, 3>;
+  template class partition_subrange<vector_partition<std::string, 4>, 4>;
+
+  // template class list_partition<std::string, 4, std::forward_list<std::string>>;
 }
 
 using namespace gch;
@@ -233,7 +245,7 @@ using namespace gch;
 class test_subrange
 {
 public:
-  
+
   using list   = std::list<int>;
   using iter   = typename list::iterator;
   using citer  = typename list::const_iterator;
@@ -241,31 +253,31 @@ public:
   using criter = typename list::const_reverse_iterator;
   using ref    = typename list::reference;
   using cref   = typename list::const_reference;
-  
+
   [[nodiscard]] iter   begin   (void)       noexcept { return m_data.begin ();   }
   [[nodiscard]] citer  begin   (void) const noexcept { return m_data.begin ();   }
   [[nodiscard]] citer  cbegin  (void) const noexcept { return m_data.cbegin ();  }
-  
+
   [[nodiscard]] iter   end     (void)       noexcept { return m_data.end ();     }
   [[nodiscard]] citer  end     (void) const noexcept { return m_data.end ();     }
   [[nodiscard]] citer  cend    (void) const noexcept { return m_data.cend ();    }
-  
+
   [[nodiscard]] riter  rbegin  (void)       noexcept { return m_data.rbegin ();  }
   [[nodiscard]] criter rbegin  (void) const noexcept { return m_data.rbegin ();  }
   [[nodiscard]] criter crbegin (void) const noexcept { return m_data.crbegin (); }
-  
+
   [[nodiscard]] riter  rend    (void)       noexcept { return m_data.rend ();    }
   [[nodiscard]] criter rend    (void) const noexcept { return m_data.rend ();    }
   [[nodiscard]] criter crend   (void) const noexcept { return m_data.crend ();   }
-  
+
   [[nodiscard]] ref&   front   (void)       noexcept { return m_data.front ();   }
   [[nodiscard]] cref&  front   (void) const noexcept { return m_data.front ();   }
-  
+
   [[nodiscard]] ref&   back    (void)       noexcept { return m_data.back ();    }
   [[nodiscard]] cref&  back    (void) const noexcept { return m_data.back ();    }
-  
+
   [[nodiscard]] iter get_pivot (void) const noexcept { return m_pivot; }
-  
+
   // test_subrange1 (void)
   //   : m_pivot (m_data.end ()),
   //     m_phi_range  ([this] (void) -> iter  { return begin (); },
@@ -273,7 +285,7 @@ public:
   //     m_body_range ([this] (void) -> iter  { return get_pivot (); },
   //                   [this] (void) -> iter  { return end (); })
   // { }
-  
+
   test_subrange (void)
     : m_pivot (m_data.end ()),
       m_phi_range  ([this] (void) -> iter  { return begin (); },
@@ -281,48 +293,48 @@ public:
       m_body_range ([this] (void) -> iter  { return get_pivot (); },
                     [this] (void) -> iter  { return end (); })
   { }
-  
+
   void emplace_body (int x)
   {
     m_data.emplace_back (x);
     if (m_pivot == end ())
       --m_pivot;
   }
-  
+
   void emplace_phi (int x)
   {
     m_data.emplace (m_pivot, x);
   }
-  
+
   void print_phi (void)
   {
     for (int i : get_phi ())
       std::cout << i << std::endl;
     std::cout << std::endl;
   }
-  
+
   void print_body (void) const
   {
     for (int i : get_body ())
       std::cout << i << std::endl;
     std::cout << std::endl;
   }
-  
+
   void rprint_phi (void)
   {
     std::for_each (get_phi ().rbegin (), get_phi ().rend (), [](int i) { std::cout << i << std::endl; });
     std::cout << std::endl;
   }
-  
+
   void rprint_body (void) const
   {
     std::for_each (get_body ().rbegin (), get_body ().rend (), [](int i) { std::cout << i << std::endl; });
     std::cout << std::endl;
   }
-  
+
   dependent_subrange<std::list<int>>& get_phi (void) { return m_phi_range; }
   const dependent_subrange<std::list<int>>& get_phi (void) const { return m_phi_range; }
-  
+
   dependent_subrange<std::list<int>>& get_body (void) { return m_body_range; }
   const dependent_subrange<std::list<int>>& get_body (void) const { return m_body_range; }
 
@@ -331,13 +343,13 @@ private:
   std::list<int>::iterator m_pivot;
   dependent_subrange<std::list<int>> m_phi_range;
   dependent_subrange<std::list<int>> m_body_range;
-  
+
 };
 
 class test_partition
 {
 public:
-  
+
   using list   = std::list<int>;
   using iter   = typename list::iterator;
   using citer  = typename list::const_iterator;
@@ -345,84 +357,84 @@ public:
   using criter = typename list::const_reverse_iterator;
   using ref  = typename list::reference;
   using cref = typename list::const_reference;
-  
+
   [[nodiscard]] iter   begin   (void)       noexcept { return m_data.begin ();   }
   [[nodiscard]] citer  begin   (void) const noexcept { return m_data.begin ();   }
   [[nodiscard]] citer  cbegin  (void) const noexcept { return m_data.cbegin ();  }
-  
+
   [[nodiscard]] iter   end     (void)       noexcept { return m_data.end ();     }
   [[nodiscard]] citer  end     (void) const noexcept { return m_data.end ();     }
   [[nodiscard]] citer  cend    (void) const noexcept { return m_data.cend ();    }
-  
+
   [[nodiscard]] riter  rbegin  (void)       noexcept { return m_data.rbegin ();  }
   [[nodiscard]] criter rbegin  (void) const noexcept { return m_data.rbegin ();  }
   [[nodiscard]] criter crbegin (void) const noexcept { return m_data.crbegin (); }
-  
+
   [[nodiscard]] riter  rend    (void)       noexcept { return m_data.rend ();    }
   [[nodiscard]] criter rend    (void) const noexcept { return m_data.rend ();    }
   [[nodiscard]] criter crend   (void) const noexcept { return m_data.crend ();   }
-  
+
   [[nodiscard]] ref&   front   (void)       noexcept { return m_data.front ();   }
   [[nodiscard]] cref&  front   (void) const noexcept { return m_data.front ();   }
-  
+
   [[nodiscard]] ref&   back    (void)       noexcept { return m_data.back ();    }
   [[nodiscard]] cref&  back    (void) const noexcept { return m_data.back ();    }
-  
+
   [[nodiscard]] iter get_pivot (void) const noexcept { return m_pivot; }
-  
+
   test_partition (void)
     : m_pivot (m_data.end ()),
       m_partition (m_data, [this] (void) -> iter  { return get_pivot (); })
   { }
-  
+
   explicit test_partition (int)
     : m_pivot (m_data.end ()),
       m_partition ([this] (void) -> iter  { return begin (); },
                    [this] (void) -> iter  { return get_pivot (); },
                    [this] (void) -> iter  { return end (); })
   { }
-  
+
   void emplace_body (int x)
   {
     m_data.emplace_back (x);
     if (m_pivot == end ())
       --m_pivot;
   }
-  
+
   void emplace_phi (int x)
   {
     m_data.emplace (m_pivot, x);
   }
-  
+
   void print_phi (void)
   {
     for (int i : get_phi ())
       std::cout << i << std::endl;
     std::cout << std::endl;
   }
-  
+
   void print_body (void) const
   {
     for (int i : get_body ())
       std::cout << i << std::endl;
     std::cout << std::endl;
   }
-  
+
   void rprint_phi (void)
   {
     std::for_each (get_phi ().rbegin (), get_phi ().rend (), [](int i) { std::cout << i << std::endl; });
     std::cout << std::endl;
   }
-  
+
   void rprint_body (void) const
   {
     std::for_each (get_body ().rbegin (), get_body ().rend (), [](int i) { std::cout << i << std::endl; });
     std::cout << std::endl;
   }
-  
+
   dependent_subrange<std::list<int>>& get_phi (void) { return get<0> (m_partition); }
   const dependent_subrange<std::list<int>>& get_phi (void) const { return get<0> (m_partition); }
-  
+
   dependent_subrange<std::list<int>>& get_body (void) { return get<1> (m_partition); }
   const dependent_subrange<std::list<int>>& get_body (void) const { return get<1> (m_partition); }
 
@@ -430,7 +442,7 @@ private:
   std::list<int> m_data;
   std::list<int>::iterator m_pivot;
   dependent_partition_view<std::list<int>, 2> m_partition;
-  
+
 };
 
 template <typename S>
@@ -441,20 +453,20 @@ S do_test_subrange (S&& s)
   std::cout << std::endl;
   s.emplace_body (7);
   s.print_body ();
-  
+
   s.emplace_body (8);
   s.print_body ();
-  
+
   s.emplace_phi (3);
   s.print_phi ();
-  
+
   s.rprint_phi ();
   s.rprint_body ();
-  
+
   for (int i : s)
     std::cout << i << std::endl;
   std::cout << std::endl;
-  
+
   std::cout << "num phi: " << s.get_phi ().size () << std::endl;
   return s;
 }
@@ -528,55 +540,55 @@ void do_test_partition (void)
   auto& r1 = get_subrange<0> (p1);
   auto& r2 = get_subrange<1> (p1);
   auto& r3 = get<2> (p1);
-  
+
   r1.emplace_back (1);
   print_partition (p1);
-  
+
   r1.emplace_back (3);
   print_partition (p1);
-  
+
   r3.emplace_back (7);
   print_partition (p1);
-  
+
   r3.emplace_back (9);
   print_partition (p1);
-  
+
   r2.emplace_back (17);
   print_partition (p1);
-  
+
   auto& r22 = next_subrange (r1);
   std::cout << "subrange: ";
   print_subrange_view (r22.view ());
-  
+
   auto& parent_part = get_partition (r1);
-  
+
   auto& r11 = prev_subrange (r2);
-  
+
   PartitionT<int, 5, C> p2;
   get_subrange<3> (p2).emplace_back (70);
   get_subrange<3> (p2).emplace_back (12);
   get_subrange<3> (p2).emplace_back (97);
   get_subrange<3> (p2).emplace_back (82);
-  
+
   auto p3 = partition_cat (p1, p2);
   auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
-  
+
   print_partition_view (p3.partition_view ());
   print_partition_view (p4.partition_view ());
-  
+
   PartitionT<int, 3, C> p6 (std::allocator<int> { });
-  
+
   auto pv = p1.partition_view ();
   print_partition_view (pv);
-  
+
   const auto& y = p1;
   auto cpv = y.partition_view ();
   print_partition_view (cpv);
-  
+
   std::cout << std::endl;
 
 #ifdef GCH_PARTITION_ITERATOR
-  
+
   partition_iterator<decltype (p1)> it = p1.begin ();
   partition_iterator<const decltype (p1)> cit = it;
   for (const auto& e : p1)
@@ -584,25 +596,25 @@ void do_test_partition (void)
     std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (decltype (p1)::overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (p1.overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (partition_overload<decltype (p1)> ([] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (partition_overload (p1, [] (auto&& arg) { std::cout << arg.size (); }), e);
@@ -619,57 +631,57 @@ void do_test_list_partition (void)
   auto& r1 = get_subrange<0> (p1);
   auto& r2 = get_subrange<1> (p1);
   auto& r3 = get<2> (p1);
-  
+
   r1.emplace_back (1);
   print_partition (p1);
-  
+
   r1.emplace_back (3);
   print_partition (p1);
-  
+
   r3.emplace_back (7);
   print_partition (p1);
-  
+
   r3.emplace_back (9);
   print_partition (p1);
-  
+
   r2.emplace_back (17);
   print_partition (p1);
-  
+
   auto& r22 = next_subrange (r1);
   std::cout << "subrange: ";
   print_subrange_view (r22.view ());
-  
+
   auto& parent_part = get_partition (r1);
   static_cast<void> (parent_part);
-  
+
   auto& r11 = prev_subrange (r2);
   static_cast<void> (r11);
-  
+
   list_partition<int, 5> p2;
   get_subrange<3> (p2).emplace_back (70);
   get_subrange<3> (p2).emplace_back (12);
   get_subrange<3> (p2).emplace_back (97);
   get_subrange<3> (p2).emplace_back (82);
-  
+
   auto p3 = partition_cat (p1, p2);
   auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
-  
+
   print_partition_view (p3.partition_view ());
   print_partition_view (p4.partition_view ());
-  
+
   list_partition<int, 3> p6 (std::list<int>::allocator_type { });
-  
+
   auto pv = p1.partition_view ();
   print_partition_view (pv);
-  
+
   const auto& y = p1;
   auto cpv = y.partition_view ();
   print_partition_view (cpv);
-  
+
   std::cout << std::endl;
 
 #ifdef GCH_PARTITION_ITERATOR
-  
+
   partition_iterator<decltype (p1)> it = p1.begin ();
   partition_iterator<const decltype (p1)> cit = it;
   static_cast<void> (cit);
@@ -678,31 +690,31 @@ void do_test_list_partition (void)
     std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (decltype (p1)::overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (p1.overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (partition_overload<decltype (p1)> ([] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (partition_overload (p1, [] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
 #endif
 
 }
@@ -713,57 +725,57 @@ void do_test_vector_partition (void)
   auto& r1 = get_subrange<0> (p1);
   auto& r2 = get_subrange<1> (p1);
   auto& r3 = get<2> (p1);
-  
+
   r1.emplace_back (1);
   print_partition (p1);
-  
+
   r1.emplace_back (3);
   print_partition (p1);
-  
+
   r3.emplace_back (7);
   print_partition (p1);
-  
+
   r3.emplace_back (9);
   print_partition (p1);
-  
+
   r2.emplace_back (17);
   print_partition (p1);
-  
+
   auto& r22 = next_subrange (r1);
   std::cout << "subrange: ";
   print_subrange_view (r22.view ());
-  
+
   auto& parent_part = get_partition (r1);
   static_cast<void> (parent_part);
-  
+
   auto& r11 = prev_subrange (r2);
   static_cast<void> (r11);
-  
+
   vector_partition<int, 5> p2;
   get_subrange<3> (p2).emplace_back (70);
   get_subrange<3> (p2).emplace_back (12);
   get_subrange<3> (p2).emplace_back (97);
   get_subrange<3> (p2).emplace_back (82);
-  
+
   auto p3 = partition_cat (p1, p2);
   auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
-  
+
   print_partition_view (p3.partition_view ());
   print_partition_view (p4.partition_view ());
-  
+
   vector_partition<int, 3> p6 (std::vector<int>::allocator_type { });
-  
+
   auto pv = p1.partition_view ();
   print_partition_view (pv);
-  
+
   const auto& y = p1;
   auto cpv = y.partition_view ();
   print_partition_view (cpv);
-  
+
   std::cout << std::endl;
 
 #ifdef GCH_PARTITION_ITERATOR
-  
+
   partition_iterator<decltype (p1)> it = p1.begin ();
   partition_iterator<const decltype (p1)> cit = it;
   static_cast<void> (cit);
@@ -772,25 +784,25 @@ void do_test_vector_partition (void)
     std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (decltype (p1)::overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (p1.overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (partition_overload<decltype (p1)> ([](auto&& arg) { std::cout << arg.size (); }), e);
   }
   std::cout << std::endl;
-  
+
   for (const auto& e : p1)
   {
     std::visit (partition_overload (p1, [](auto&& arg) { std::cout << arg.size (); }), e);
@@ -850,7 +862,7 @@ enum key5
 void do_test_enum_access (void)
 {
 #ifdef GCH_TEMPLATE_AUTO
-  
+
   list_partition<int, 3> x;
   get_subrange<key::first> (x).emplace_back (5);
   get_subrange<key::first> (x).emplace_back (6);
@@ -878,7 +890,7 @@ void do_test_enum_access (void)
   // print (get_subrange<forth2> (x));
   // print (get_subrange<key4::fifth> (x));
   // print (get_subrange<fifth2> (x));
-  
+
 #else
 
   list_partition<int, 3> x;
@@ -897,7 +909,7 @@ void do_test_enum_access (void)
                                              });
                               std::cout << std::endl;
                             };
-  
+
   print (get_subrange<char, '\0'> (x));
   print (get_subrange<key1, key1::first> (x));
   print (get_subrange<key2, first> (x));
@@ -918,7 +930,7 @@ int main (void)
 {
   // auto s1 = do_test_subrange (test_subrange ());
   // auto s2 = do_test_subrange (test_partition ());
-  
+
   using clock = std::chrono::high_resolution_clock;
   auto ts = clock::now ();
   for (int i = 0; i < repeat; ++i)
@@ -926,13 +938,13 @@ int main (void)
     do_test_list_partition ();
   }
   auto tl = clock::now ();
-  
+
   for (int i = 0; i < repeat; ++i)
   {
     do_test_vector_partition ();
   }
   auto tv = clock::now ();
-  
+
   std::cout << "list took:   " << std::chrono::duration_cast<std::chrono::nanoseconds> (tl - ts).count () << " nanoseconds." << std::endl;
   std::cout << "vector took: " << std::chrono::duration_cast<std::chrono::nanoseconds> (tv - ts).count () << " nanoseconds." << std::endl;
 
