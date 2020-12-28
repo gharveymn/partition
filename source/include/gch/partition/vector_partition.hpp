@@ -13,6 +13,7 @@
 #include "partition.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 #include <vector>
 
 #ifndef GCH_CPP14_CONSTEXPR
@@ -242,7 +243,7 @@ namespace gch
     {
       diff_t sz = size ();
       m_container.erase (cbegin (), cend ());
-      static_cast<next_type *> (this)->add_to_offset (-sz);
+      next_subrange (*this).add_to_offset (-sz);
     }
 
     template <typename ...Args>
@@ -250,26 +251,26 @@ namespace gch
     {
       size_t sz = m_container.size ();
       iter ret = m_container.insert (pos, std::forward<Args> (args)...);
-      static_cast<next_type *> (this)->add_to_offset (m_container.size () - sz);
+      next_subrange (*this).add_to_offset (m_container.size () - sz);
       return ret;
     }
 
     template <typename ...Args>
     iter emplace (const citer pos, Args&&... args)
     {
-      static_cast<next_type *> (this)->add_to_offset (1);
+      next_subrange (*this).add_to_offset (1);
       return m_container.emplace (pos, std::forward<Args> (args)...);
     }
 
     iter erase (const citer pos)
     {
-      static_cast<next_type *> (this)->add_to_offset (-1);
+      next_subrange (*this).add_to_offset (-1);
       return m_container.erase (pos);
     }
 
     iter erase (const citer first, const citer last)
     {
-      static_cast<next_type *> (this)->add_to_offset (std::distance (first, last));
+      next_subrange (*this).add_to_offset (std::distance (first, last));
       return m_container.erase (first, last);
     }
 
@@ -277,14 +278,14 @@ namespace gch
     void push_back (U&& val)
     {
       m_container.insert (end (), std::forward<U> (val));
-      static_cast<next_type *> (this)->add_to_offset (1);
+      next_subrange (*this).add_to_offset (1);
     }
 
     template <typename ...Args>
     ref emplace_back (Args&&... args)
     {
       iter ret = m_container.emplace (end (), std::forward<Args> (args)...);
-      static_cast<next_type *> (this)->add_to_offset (1);
+      next_subrange (*this).add_to_offset (1);
       return *ret;
     }
 
@@ -297,14 +298,14 @@ namespace gch
     void push_front (U&& val)
     {
       m_container.push_front (std::forward<U> (val));
-      static_cast<next_type *> (this)->add_to_offset (1);
+      next_subrange (*this).add_to_offset (1);
     }
 
     template <typename ...Args>
     ref emplace_front (Args&&... args)
     {
       iter ret = m_container.emplace (begin (), std::forward<Args> (args)...);
-      static_cast<next_type *> (this)->add_to_offset (1);
+      next_subrange (*this).add_to_offset (1);
       return *ret;
     }
 
@@ -359,6 +360,13 @@ namespace gch
     subrange_view<citer> view (void) const
     {
       return { begin (), end () };
+    }
+
+    iter advance_begin (diff_t) = delete;
+
+    iter advance_end (diff_t change)
+    {
+      return next_subrange (*this).advance_begin (change);
     }
 
   protected:
@@ -433,8 +441,8 @@ namespace gch
     template <std::size_t M, std::size_t J, typename ...Subranges,
       typename std::enable_if<(J < M)>::type * = nullptr>
     partition_subrange (size_t accum,
-                               const partition_subrange<vector_partition<T, M, Container>, J>& other,
-                               Subranges&&... subranges)
+                        const partition_subrange<vector_partition<T, M, Container>, J>& other,
+                        Subranges&&... subranges)
       : next_type (accum, next_subrange (other), std::forward<Subranges> (subranges)...),
         m_offset (other.m_offset + accum)
     { }
@@ -600,7 +608,7 @@ namespace gch
     template <typename U>
     void push_back (U&& val)
     {
-      size_t pos_off = static_cast<next_type *> (this)->get_offset ();
+      size_t pos_off = next_subrange (*this).get_offset ();
       iter it = m_container.insert (cend (), std::forward<U> (val));
       modify_offsets (1);
     }
@@ -686,6 +694,30 @@ namespace gch
       return { begin (), end () };
     }
 
+    iter advance_begin (diff_t change)
+    {
+      // first case: past end, second case: past begin
+      if (((change > 0) && (static_cast<size_t> (change) > m_container.size () - m_offset)) ||
+          ((change < 0) && (static_cast<size_t> (-change) > m_offset)))
+        throw std::out_of_range ("requested change of subrange offset is out of range");
+
+      m_offset += change;
+      if (change > 0)
+        next_subrange (*this).propagate_offset_right (m_offset);
+      else
+        prev_subrange (*this).propagate_offset_left (m_offset);
+      return begin ();
+    }
+
+    template <std::size_t J = Index, typename std::enable_if<(J < N - 1)>::type * = nullptr>
+    iter advance_end (diff_t change)
+    {
+      return next_subrange (*this).advance_begin (change);
+    }
+
+    template <std::size_t J = Index, typename std::enable_if<(J == N - 1)>::type * = nullptr>
+    iter advance_end (diff_t change) = delete;
+
   protected:
     constexpr size_t get_offset (void) const noexcept { return m_offset; }
 
@@ -695,13 +727,31 @@ namespace gch
       if (change == 0)
         return;
 
-      static_cast<next_type *> (this)->add_to_offset (change);
+      next_subrange (*this).add_to_offset (change);
     }
 
     void add_to_offset (diff_t change)
     {
-      static_cast<next_type *> (this)->add_to_offset (change);
+      next_subrange (*this).add_to_offset (change);
       m_offset += change;
+    }
+
+    void propagate_offset_left (size_t pos_off) noexcept
+    {
+      if (m_offset > pos_off)
+      {
+        m_offset = pos_off;
+        prev_subrange (*this).propagate_offset_left (pos_off);
+      }
+    }
+
+    void propagate_offset_right (size_t pos_off) noexcept
+    {
+      if (m_offset < pos_off)
+      {
+        m_offset = pos_off;
+        next_subrange (*this).propagate_offset_right (pos_off);
+      }
     }
 
     std::pair<citer, size_t> resize_pos (const size_t count) const
@@ -832,11 +882,15 @@ namespace gch
     subrange_view<iter>  view (void)       = delete;
     subrange_view<citer> view (void) const = delete;
 
+    iter advance_begin (diff_t) = delete;
+    iter advance_end   (diff_t) = delete;
+
   protected:
     constexpr size_t get_offset (void) const noexcept { return m_container.size (); }
 
   private:
-    static void add_to_offset (diff_t) noexcept { }
+    static void add_to_offset          (diff_t) noexcept { }
+    static void propagate_offset_right (size_t) noexcept { }
 
   protected:
     container_type m_container;
@@ -947,7 +1001,7 @@ erase_if (partition_subrange<vector_partition<T, N, C>, I>& c, Pred pred)
       construct (std::forward<Partitions> (ps)...);
     }
 
-    void construct (void) const noexcept { }
+    static void construct (void) noexcept { }
 
   public:
     constexpr explicit vector_partition (const data_alloc_t& alloc)
@@ -975,19 +1029,19 @@ erase_if (partition_subrange<vector_partition<T, N, C>, I>& c, Pred pred)
     get_subrange (const PartitionT<U, M, C>&& p) noexcept;
 
     template <typename Partition, std::size_t Index>
-    friend constexpr parent_partition_t<partition_subrange<Partition, Index>>&
+    friend constexpr partition_type_t<partition_subrange<Partition, Index>>&
     get_partition (partition_subrange<Partition, Index>& p) noexcept;
 
     template <typename Partition, std::size_t Index>
-    friend constexpr const parent_partition_t<partition_subrange<Partition, Index>>&
+    friend constexpr const partition_type_t<partition_subrange<Partition, Index>>&
     get_partition (const partition_subrange<Partition, Index>& p) noexcept;
 
     template <typename Partition, std::size_t Index>
-    friend constexpr parent_partition_t<partition_subrange<Partition, Index>>&&
+    friend constexpr partition_type_t<partition_subrange<Partition, Index>>&&
     get_partition (partition_subrange<Partition, Index>&& p) noexcept;
 
     template <typename Partition, std::size_t Index>
-    friend constexpr const parent_partition_t<partition_subrange<Partition, Index>>&&
+    friend constexpr const partition_type_t<partition_subrange<Partition, Index>>&&
     get_partition (const partition_subrange<Partition, Index>&& p) noexcept;
 
     GCH_CPP14_CONSTEXPR subrange_type<0> front (void) noexcept
@@ -1070,6 +1124,20 @@ erase_if (partition_subrange<vector_partition<T, N, C>, I>& c, Pred pred)
       return get_subrange<Idx> (*this).view ();
     }
 
+    template <std::size_t Index,
+              typename = typename std::enable_if<(0 < Index) && (Index < N)>::type>
+    data_iter advance_begin (data_diff_t change)
+    {
+      return get_subrange<Index> (*this).advance_begin (change);
+    }
+
+    template <std::size_t Index,
+              typename = typename std::enable_if<(Index < N)>::type>
+    data_iter advance_end (data_diff_t change)
+    {
+      return get_subrange<Index> (*this).advance_end (change);
+    }
+
 #ifdef GCH_PARTITION_ITERATOR
 
     using iter   = partition_iterator<vector_partition>;
@@ -1103,34 +1171,6 @@ erase_if (partition_subrange<vector_partition<T, N, C>, I>& c, Pred pred)
 
   private:
   };
-
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (vector_partition<T, N, Container>& p) noexcept
-  -> decltype (get_subrange<Index> (p))
-  {
-    return get_subrange<Index> (p);
-  }
-
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (const vector_partition<T, N, Container>& p) noexcept
-  -> decltype (get_subrange<Index> (p))
-  {
-    return get_subrange<Index> (p);
-  }
-
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (vector_partition<T, N, Container>&& p) noexcept
-  -> decltype (get_subrange<Index> (p))
-  {
-    return get_subrange<Index> (p);
-  }
-
-  template <std::size_t Index, typename T, std::size_t N, typename Container>
-  constexpr auto get (const vector_partition<T, N, Container>&& p) noexcept
-  -> decltype (get_subrange<Index> (p))
-  {
-    return get_subrange<Index> (p);
-  }
 
   template <typename T, typename Container, typename ...Partitions>
   vector_partition<T, total_subranges<Partitions...>::value, Container>
