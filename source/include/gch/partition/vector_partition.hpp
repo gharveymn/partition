@@ -78,8 +78,7 @@ namespace gch
 
   template <typename T, std::size_t N, typename Container>
   class partition_subrange<vector_partition<T, N, Container>, 0>
-    : public subrange_traits<partition_subrange<vector_partition<T, N, Container>, 0>>,
-      public partition_subrange<vector_partition<T, N, Container>, 1>
+    : public partition_subrange<vector_partition<T, N, Container>, 1>
   {
     template <typename, std::size_t, typename>
     friend class partition_subrange;
@@ -90,20 +89,29 @@ namespace gch
 //  using prev_type      = void;
     using next_type      = partition_subrange<partition_type, 1>;
 
-  private:
-    using traits = subrange_traits<subrange_type>;
+    using container_type         = Container;
+    using iterator               = typename Container::iterator;
+    using const_iterator         = typename Container::const_iterator;
+    using reverse_iterator       = typename Container::reverse_iterator;
+    using const_reverse_iterator = typename Container::const_reverse_iterator;
+    using reference              = typename Container::reference;
+    using const_reference        = typename Container::const_reference;
+    using size_type              = typename Container::size_type;
+    using difference_type        = typename Container::difference_type;
+    using value_type             = typename Container::value_type;
+    using allocator_type         = typename Container::allocator_type;
 
-    using container_type = typename traits::container_type;
-    using iter    = typename traits::iterator;
-    using citer   = typename traits::const_iterator;
-    using riter   = typename traits::reverse_iterator;
-    using criter  = typename traits::const_reverse_iterator;
-    using ref     = typename traits::reference;
-    using cref    = typename traits::const_reference;
-    using size_t  = typename traits::size_type;
-    using diff_t  = typename traits::difference_type;
-    using value_t = typename traits::value_type;
-    using alloc_t = typename traits::allocator_type;
+  private:
+    using iter    = iterator;
+    using citer   = const_iterator;
+    using riter   = reverse_iterator;
+    using criter  = const_reverse_iterator;
+    using ref     = reference;
+    using cref    = const_reference;
+    using size_t  = size_type;
+    using diff_t  = difference_type;
+    using value_t = value_type;
+    using alloc_t = allocator_type;
 
   protected:
     using next_type::m_container;
@@ -390,8 +398,7 @@ namespace gch
   template <typename T, std::size_t N, typename Container, std::size_t Index>
   class partition_subrange<vector_partition<T, N, Container>, Index,
                                 typename std::enable_if<(0 < Index) && (Index < N)>::type>
-    : public subrange_traits<partition_subrange<vector_partition<T, N, Container>, Index>>,
-      public partition_subrange<vector_partition<T, N, Container>, Index + 1>
+    : public partition_subrange<vector_partition<T, N, Container>, Index + 1>
   {
     template <typename, std::size_t, typename>
     friend class partition_subrange;
@@ -402,20 +409,29 @@ namespace gch
     using prev_type      = partition_subrange<partition_type, Index - 1>;
     using next_type      = partition_subrange<partition_type, Index + 1>;
 
-  private:
-    using traits = subrange_traits<subrange_type>;
+    using container_type         = Container;
+    using iterator               = typename Container::iterator;
+    using const_iterator         = typename Container::const_iterator;
+    using reverse_iterator       = typename Container::reverse_iterator;
+    using const_reverse_iterator = typename Container::const_reverse_iterator;
+    using reference              = typename Container::reference;
+    using const_reference        = typename Container::const_reference;
+    using size_type              = typename Container::size_type;
+    using difference_type        = typename Container::difference_type;
+    using value_type             = typename Container::value_type;
+    using allocator_type         = typename Container::allocator_type;
 
-    using container_type = typename traits::container_type;
-    using iter    = typename traits::iterator;
-    using citer   = typename traits::const_iterator;
-    using riter   = typename traits::reverse_iterator;
-    using criter  = typename traits::const_reverse_iterator;
-    using ref     = typename traits::reference;
-    using cref    = typename traits::const_reference;
-    using size_t  = typename traits::size_type;
-    using diff_t  = typename traits::difference_type;
-    using value_t = typename traits::value_type;
-    using alloc_t = typename traits::allocator_type;
+  private:
+    using iter    = iterator;
+    using citer   = const_iterator;
+    using riter   = reverse_iterator;
+    using criter  = const_reverse_iterator;
+    using ref     = reference;
+    using cref    = const_reference;
+    using size_t  = size_type;
+    using diff_t  = difference_type;
+    using value_t = value_type;
+    using alloc_t = allocator_type;
 
   protected:
     using next_type::m_container;
@@ -782,7 +798,6 @@ namespace gch
   // end case holds the actual container
   template <typename T, std::size_t N, typename Container>
   class partition_subrange<vector_partition<T, N, Container>, N>
-    : public subrange_traits<partition_subrange<vector_partition<T, N, Container>, N>>
   {
     template <typename, std::size_t, typename>
     friend class partition_subrange;
@@ -793,20 +808,29 @@ namespace gch
     using prev_type      = partition_subrange<partition_type, N - 1>;
 //  using next_type      = void;
 
-  private:
-    using traits = subrange_traits<subrange_type>;
+    using container_type         = Container;
+    using iterator               = typename Container::iterator;
+    using const_iterator         = typename Container::const_iterator;
+    using reverse_iterator       = typename Container::reverse_iterator;
+    using const_reverse_iterator = typename Container::const_reverse_iterator;
+    using reference              = typename Container::reference;
+    using const_reference        = typename Container::const_reference;
+    using size_type              = typename Container::size_type;
+    using difference_type        = typename Container::difference_type;
+    using value_type             = typename Container::value_type;
+    using allocator_type         = typename Container::allocator_type;
 
-    using container_type = typename traits::container_type;
-    using iter    = typename traits::iterator;
-    using citer   = typename traits::const_iterator;
-    using riter   = typename traits::reverse_iterator;
-    using criter  = typename traits::const_reverse_iterator;
-    using ref     = typename traits::reference;
-    using cref    = typename traits::const_reference;
-    using size_t  = typename traits::size_type;
-    using diff_t  = typename traits::difference_type;
-    using value_t = typename traits::value_type;
-    using alloc_t = typename traits::allocator_type;
+  private:
+    using iter    = iterator;
+    using citer   = const_iterator;
+    using riter   = reverse_iterator;
+    using criter  = const_reverse_iterator;
+    using ref     = reference;
+    using cref    = const_reference;
+    using size_t  = size_type;
+    using diff_t  = difference_type;
+    using value_t = value_type;
+    using alloc_t = allocator_type;
 
   public:
     partition_subrange            (void)                          = default;

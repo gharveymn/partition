@@ -370,12 +370,13 @@ namespace gch
     return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<Partition> (p));
   }
 
-  template <auto EnumIndex, typename Partition,
-            std::enable_if_t<! std::is_enum_v<decltype (EnumIndex)> &&
-                             std::is_convertible_v<decltype (EnumIndex), std::size_t>> * = nullptr>
+  template <auto Index, typename Partition,
+            std::enable_if_t<! std::is_enum_v<decltype (Index)> &&
+                             ! std::is_same_v<decltype (Index), std::size_t> &&
+                             std::is_convertible_v<decltype (Index), std::size_t>> * = nullptr>
   constexpr decltype (auto) get_subrange (Partition&& p) noexcept
   {
-    return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<Partition> (p));
+    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p));
   }
 
 #else
@@ -383,8 +384,8 @@ namespace gch
   template <typename T, T Index, typename Partition,
             typename std::enable_if<
                 std::is_enum<T>::value &&
-                std::is_convertible<
-                  typename std::underlying_type<T>::type, std::size_t>::value>::type * = nullptr>
+                std::is_convertible<typename std::underlying_type<T>::type,
+                                    std::size_t>::value>::type * = nullptr>
   constexpr auto get_subrange (Partition&& p) noexcept
     -> decltype (get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p)))
   {
@@ -393,6 +394,7 @@ namespace gch
 
   template <typename T, T Index, typename Partition,
     typename std::enable_if<! std::is_enum<T>::value &&
+                            ! std::is_same<T, std::size_t>::value &&
                             std::is_convertible<T, std::size_t>::value>::type * = nullptr>
   constexpr auto get_subrange (Partition&& p) noexcept
     -> decltype (get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p)))
