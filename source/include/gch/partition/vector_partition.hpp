@@ -109,28 +109,27 @@ namespace gch
     using next_type::m_container;
 
   public:
-//  partition_subrange            (void)                               = impl;
-//  partition_subrange            (const partition_subrange&)     = impl;
-//  partition_subrange            (partition_subrange&&) noexcept = impl;
+    partition_subrange            (void)                          = default;
+    partition_subrange            (const partition_subrange&)     = default;
+    partition_subrange            (partition_subrange&&) noexcept = default;
 //  partition_subrange& operator= (const partition_subrange&)     = impl;
 //  partition_subrange& operator= (partition_subrange&&) noexcept = impl;
-    ~partition_subrange           (void)                               = default;
+    ~partition_subrange           (void)                          = default;
 
-    constexpr partition_subrange (void)
-      : next_type ()
-    { }
+    partition_subrange& operator= (const partition_subrange& other) noexcept
+    {
+      if (&other != this)
+        assign (other.begin (), other.end ());
+      return *this;
+    }
 
-    constexpr partition_subrange (const partition_subrange& other)
-      : next_type (other)
-    { }
-
-    constexpr partition_subrange (partition_subrange&& other)
-      : next_type (std::move (other))
-    { }
+    partition_subrange& operator= (partition_subrange&& other) noexcept
+    {
+      assign (std::make_move_iterator (other.begin ()), std::make_move_iterator (other.end ()));
+      return *this;
+    }
 
   protected:
-
-
     template <std::size_t M, typename ...Subranges>
     constexpr partition_subrange (const partition_subrange<vector_partition<T, M, Container>, 0>& other,
                                        Subranges&&... subranges)
@@ -162,19 +161,6 @@ namespace gch
     { }
 
   public:
-    partition_subrange& operator= (const partition_subrange& other) noexcept
-    {
-      if (&other != this)
-        assign (other.begin (), other.end ());
-      return *this;
-    }
-
-    partition_subrange& operator= (partition_subrange&& other) noexcept
-    {
-      assign (std::make_move_iterator (other.begin ()), std::make_move_iterator (other.end ()));
-      return *this;
-    }
-
     explicit partition_subrange (iter) { }
 
     void assign (size_t count, const value_t& val)
@@ -241,52 +227,83 @@ namespace gch
 
     void clear (void) noexcept
     {
-      diff_t sz = size ();
-      m_container.erase (cbegin (), cend ());
-      next_subrange (*this).add_to_offset (-sz);
+      erase (cbegin(), cend ());
+    }
+
+    iter insert (const citer pos, const value_t& lv)
+    {
+      iter ret = m_container.insert (pos, lv);
+      modify_offsets (1);
+      return ret;
+    }
+
+    iter insert (const citer pos, value_t&& rv)
+    {
+      iter ret = m_container.insert (pos, std::move (rv));
+      modify_offsets (1);
+      return ret;
     }
 
     template <typename ...Args>
-    iter insert (const citer pos, Args&&... args)
+    iter insert (const citer pos, size_t count, const value_t& val)
     {
-      size_t sz = m_container.size ();
-      iter ret = m_container.insert (pos, std::forward<Args> (args)...);
-      next_subrange (*this).add_to_offset (m_container.size () - sz);
+      iter ret = m_container.insert (pos, count, val);
+      modify_offsets (count);
+      return ret;
+    }
+
+    template <typename Iterator>
+    iter insert (const citer pos, Iterator first, Iterator last)
+    {
+      iter ret = m_container.insert (pos, first, last);
+      modify_offsets (std::distance (first, last));
+      return ret;
+    }
+
+    iter insert (const citer pos, std::initializer_list<value_t> ilist)
+    {
+      iter ret = m_container.insert (pos, ilist);
+      modify_offsets (ilist.size ());
       return ret;
     }
 
     template <typename ...Args>
     iter emplace (const citer pos, Args&&... args)
     {
-      next_subrange (*this).add_to_offset (1);
-      return m_container.emplace (pos, std::forward<Args> (args)...);
+      iter ret = m_container.emplace (pos, std::forward<Args> (args)...);
+      modify_offsets (1);
+      return ret;
     }
 
     iter erase (const citer pos)
     {
-      next_subrange (*this).add_to_offset (-1);
-      return m_container.erase (pos);
+      iter ret = m_container.erase (pos);
+      modify_offsets (-1);
+      return ret;
     }
 
     iter erase (const citer first, const citer last)
     {
-      next_subrange (*this).add_to_offset (std::distance (first, last));
-      return m_container.erase (first, last);
+      diff_t change = std::distance (last, first); // < 0
+      iter ret = m_container.erase (first, last);
+      modify_offsets (change);
+      return ret;
     }
 
-    template <typename U>
-    void push_back (U&& val)
+    void push_back (const value_t& val)
     {
-      m_container.insert (end (), std::forward<U> (val));
-      next_subrange (*this).add_to_offset (1);
+      insert (cend (), val);
+    }
+
+    void push_back (value_t&& val)
+    {
+      insert (cend (), std::move (val));
     }
 
     template <typename ...Args>
     ref emplace_back (Args&&... args)
     {
-      iter ret = m_container.emplace (end (), std::forward<Args> (args)...);
-      next_subrange (*this).add_to_offset (1);
-      return *ret;
+      return *emplace (cend (), std::forward<Args> (args)...);
     }
 
     void pop_back (void)
@@ -294,24 +311,37 @@ namespace gch
       erase (--cend ());
     }
 
-    template <typename U>
-    void push_front (U&& val)
+    void push_front (const value_t& val)
     {
-      m_container.push_front (std::forward<U> (val));
-      next_subrange (*this).add_to_offset (1);
+      insert (cbegin (), val);
+    }
+
+    void push_front (value_t&& val)
+    {
+      insert (cbegin (), std::move (val));
     }
 
     template <typename ...Args>
     ref emplace_front (Args&&... args)
     {
-      iter ret = m_container.emplace (begin (), std::forward<Args> (args)...);
-      next_subrange (*this).add_to_offset (1);
-      return *ret;
+      return *emplace (cbegin (), std::forward<Args> (args)...);
+    }
+
+    void resize (size_t count)
+    {
+      resize (count, { });
+    }
+
+    void resize (size_t count, const value_t& val)
+    {
+      if (count > size ())
+        insert (cend (), count - size (), val);
+      else if (count < size ())
+        erase (std::next (cbegin (), count), cend ());
     }
 
     template <std::size_t M, std::size_t J>
     void swap (partition_subrange<vector_partition<T, M, Container>, J>& other)
-    noexcept (noexcept (std::declval<container_type> ().swap (std::declval<container_type&> ())))
     {
       if (&other == this)
         return;
@@ -319,37 +349,6 @@ namespace gch
       container_type tmp (std::make_move_iterator (begin ()), std::make_move_iterator (end ()));
       assign (std::make_move_iterator (other.begin ()), std::make_move_iterator (other.end ()));
       other.assign (std::make_move_iterator (tmp.begin ()), std::make_move_iterator (tmp.end ()));
-    }
-
-    void resize (size_t count)
-    {
-      std::pair<citer, size_t> pos = resize_pos (count);
-      if (pos.second != 0)
-      {
-        size_t idx = 0;
-        try
-        {
-          for (; idx < pos.second; ++idx)
-            emplace_back ();
-        }
-        catch (...)
-        {
-          for (; idx != 0; --idx)
-            pop_back ();
-          throw;
-        }
-      }
-      else
-        erase (pos.first, cend ());
-    }
-
-    void resize (size_t count, const value_t& val)
-    {
-      std::pair<citer, size_t> pos = resize_pos (count);
-      if (pos.second != 0)
-        insert (cend (), pos.second, val);
-      else
-        erase (pos.first, cend ());
     }
 
     subrange_view<iter> view (void)
@@ -370,29 +369,21 @@ namespace gch
     }
 
   protected:
+    void partition_swap (partition_subrange& other)
+      noexcept (noexcept (std::declval<next_type&> ().partition_swap (other)))
+    {
+      next_type::partition_swap (other);
+    }
+
     constexpr size_t get_offset (void) const noexcept { return 0; }
 
   private:
-    std::pair<citer, size_t> resize_pos (const size_t count) const
+    void modify_offsets (diff_t change)
     {
-      citer cit;
-      const size_t len = size ();
-      if (count < len)
-      {
-        if (count <= len / 2)
-        {
-          cit = cbegin ();
-          std::advance (cit, count);
-        }
-        else
-        {
-          cit = cend ();
-          diff_t num_erase = len - count;
-          std::advance (cit, -num_erase);
-        }
-        return { cit, 0 };
-      }
-      return { cend (), count - len };
+      if (change == 0)
+        return;
+
+      next_subrange (*this).add_to_offset (change);
     }
   };
 
@@ -568,17 +559,43 @@ namespace gch
 
     void clear (void) noexcept
     {
-      diff_t sz = size ();
-      m_container.erase (cbegin (), cend ());
-      modify_offsets (-sz);
+      erase (cbegin(), cend ());
+    }
+
+    iter insert (const citer pos, const value_t& lv)
+    {
+      iter ret = m_container.insert (pos, lv);
+      modify_offsets (1);
+      return ret;
+    }
+
+    iter insert (const citer pos, value_t&& rv)
+    {
+      iter ret = m_container.insert (pos, std::move (rv));
+      modify_offsets (1);
+      return ret;
     }
 
     template <typename ...Args>
-    iter insert (const citer pos, Args&&... args)
+    iter insert (const citer pos, size_t count, const value_t& val)
     {
-      size_t sz = m_container.size ();
-      iter ret = m_container.insert (pos, std::forward<Args> (args)...);
-      modify_offsets (m_container.size () - sz);
+      iter ret = m_container.insert (pos, count, val);
+      modify_offsets (count);
+      return ret;
+    }
+
+    template <typename Iterator>
+    iter insert (const citer pos, Iterator first, Iterator last)
+    {
+      iter ret = m_container.insert (pos, first, last);
+      modify_offsets (std::distance (first, last));
+      return ret;
+    }
+
+    iter insert (const citer pos, std::initializer_list<value_t> ilist)
+    {
+      iter ret = m_container.insert (pos, ilist);
+      modify_offsets (ilist.size ());
       return ret;
     }
 
@@ -599,26 +616,26 @@ namespace gch
 
     iter erase (const citer first, const citer last)
     {
-      diff_t change = std::distance (first, last);
+      diff_t change = std::distance (last, first); // < 0
       iter ret = m_container.erase (first, last);
-      modify_offsets (-change);
+      modify_offsets (change);
       return ret;
     }
 
-    template <typename U>
-    void push_back (U&& val)
+    void push_back (const value_t& val)
     {
-      size_t pos_off = next_subrange (*this).get_offset ();
-      iter it = m_container.insert (cend (), std::forward<U> (val));
-      modify_offsets (1);
+      insert (cend (), val);
+    }
+
+    void push_back (value_t&& val)
+    {
+      insert (cend (), std::move (val));
     }
 
     template <typename ...Args>
     ref emplace_back (Args&&... args)
     {
-      iter ret = m_container.emplace (cend (), std::forward<Args> (args)...);
-      modify_offsets (1);
-      return *ret;
+      return *emplace (cend (), std::forward<Args> (args)...);
     }
 
     void pop_back (void)
@@ -626,55 +643,37 @@ namespace gch
       erase (--cend ());
     }
 
-    template <typename U>
-    void push_front (U&& val)
+    void push_front (const value_t& val)
     {
-      m_container.insert (cbegin (), std::forward<U> (val));
-      modify_offsets (1);
+      insert (cbegin (), val);
+    }
+
+    void push_front (value_t&& val)
+    {
+      insert (cbegin (), std::move (val));
     }
 
     template <typename ...Args>
     ref emplace_front (Args&&... args)
     {
-      m_container.emplace (cbegin (), std::forward<Args> (args)...);
-      modify_offsets (1);
-      return *begin ();
+      return *emplace (cbegin (), std::forward<Args> (args)...);
     }
 
     void resize (size_t count)
     {
-      std::pair<citer, size_t> pos = resize_pos (count);
-      if (pos.second != 0)
-      {
-        size_t idx = 0;
-        try
-        {
-          for (; idx < pos.second; ++idx)
-            emplace_back ();
-        }
-        catch (...)
-        {
-          for (; idx != 0; --idx)
-            pop_back ();
-          throw;
-        }
-      }
-      else
-        erase (pos.first, cend ());
+      resize (count, { });
     }
 
     void resize (size_t count, const value_t& val)
     {
-      std::pair<citer, size_t> pos = resize_pos (count);
-      if (pos.second != 0)
-        insert (cend (), pos.second, val);
-      else
-        erase (pos.first, cend ());
+      if (count > size ())
+        insert (cend (), count - size (), val);
+      else if (count < size ())
+        erase (std::next (cbegin (), count), cend ());
     }
 
     template <std::size_t M, std::size_t J>
     void swap (partition_subrange<vector_partition<T, M, Container>, J>& other)
-    noexcept (noexcept (std::declval<container_type> ().swap (std::declval<container_type&> ())))
     {
       if (&other == this)
         return;
@@ -718,7 +717,30 @@ namespace gch
     template <std::size_t J = Index, typename std::enable_if<(J == N - 1)>::type * = nullptr>
     iter advance_end (diff_t change) = delete;
 
+  private:
+    template <typename U>
+    struct is_nothrow_swappable
+    {
+    private:
+      static constexpr bool test (void)
+      {
+        using std::swap;
+        return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
+      }
+    public:
+      static constexpr bool value = test ();
+    };
+
   protected:
+    void partition_swap (partition_subrange& other)
+      noexcept (is_nothrow_swappable<size_t>::value &&
+                noexcept (std::declval<next_type&> ().partition_swap (other)))
+    {
+      using std::swap;
+      swap (m_offset, other.m_offset);
+      next_type::partition_swap (other);
+    }
+
     constexpr size_t get_offset (void) const noexcept { return m_offset; }
 
   private:
@@ -754,28 +776,6 @@ namespace gch
       }
     }
 
-    std::pair<citer, size_t> resize_pos (const size_t count) const
-    {
-      citer cit;
-      const size_t len = size ();
-      if (count < len)
-      {
-        if (count <= len / 2)
-        {
-          cit = cbegin ();
-          std::advance (cit, count);
-        }
-        else
-        {
-          cit = cend ();
-          diff_t num_erase = len - count;
-          std::advance (cit, -num_erase);
-        }
-        return { cit, 0 };
-      }
-      return { cend (), count - len };
-    }
-
     size_t m_offset = 0;
   };
 
@@ -809,40 +809,35 @@ namespace gch
     using alloc_t = typename traits::allocator_type;
 
   public:
-    partition_subrange            (void)                                 = default;
-//  partition_subrange            (const partition_subrange&)     = impl;
-//  partition_subrange            (partition_subrange&&) noexcept = impl;
+    partition_subrange            (void)                          = default;
+    partition_subrange            (const partition_subrange&)     = default;
+    partition_subrange            (partition_subrange&&) noexcept = default;
     partition_subrange& operator= (const partition_subrange&)     = default;
     partition_subrange& operator= (partition_subrange&&) noexcept = default;
-    ~partition_subrange           (void)                                 = default;
-
-    GCH_CPP20_CONSTEXPR
-    partition_subrange (const partition_subrange& other) GCH_CPP17_NOEXCEPT
-      : m_container (other.m_container)
-    { }
-
-    GCH_CPP20_CONSTEXPR
-    partition_subrange (partition_subrange&& other) GCH_CPP17_NOEXCEPT
-      : m_container (std::move (other.m_container))
-    { }
+    ~partition_subrange           (void)                          = default;
 
   protected:
     template <std::size_t M>
     GCH_CPP20_CONSTEXPR
-    partition_subrange (size_t, const partition_subrange<vector_partition<T, M, Container>, M>&)
+    partition_subrange (size_t accum,
+                        const partition_subrange<vector_partition<T, M, Container>, M>& other)
           GCH_CPP17_NOEXCEPT
       : m_container { }
-    { }
+    {
+      m_container.reserve (accum + other.m_container.size ());
+    }
 
     template <std::size_t M>
     GCH_CPP20_CONSTEXPR
-    partition_subrange (size_t, partition_subrange<vector_partition<T, M, Container>, M>&&)
+    partition_subrange (size_t accum,
+                        partition_subrange<vector_partition<T, M, Container>, M>&& other)
           GCH_CPP17_NOEXCEPT
       : m_container { }
-    { }
+    {
+      m_container.reserve (accum + other.m_container.size ());
+    }
 
-    GCH_CPP20_CONSTEXPR explicit
-    partition_subrange (const alloc_t& alloc) GCH_CPP17_NOEXCEPT
+    GCH_CPP20_CONSTEXPR explicit partition_subrange (const alloc_t& alloc) GCH_CPP17_NOEXCEPT
       : m_container (alloc)
     { }
 
@@ -885,7 +880,28 @@ namespace gch
     iter advance_begin (diff_t) = delete;
     iter advance_end   (diff_t) = delete;
 
+  private:
+    template <typename U>
+    struct is_nothrow_swappable
+    {
+    private:
+      static constexpr bool test (void)
+      {
+        using std::swap;
+        return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
+      }
+    public:
+      static constexpr bool value = test ();
+    };
+
   protected:
+    void partition_swap (partition_subrange& other)
+      noexcept (is_nothrow_swappable<container_type>::value)
+    {
+      using std::swap;
+      swap (m_container, other.m_container);
+    }
+
     constexpr size_t get_offset (void) const noexcept { return m_container.size (); }
 
   private:
@@ -899,7 +915,7 @@ namespace gch
   template <typename T, std::size_t N, typename C, std::size_t I>
   void swap (partition_subrange<vector_partition<T, N, C>, I>& lhs,
              partition_subrange<vector_partition<T, N, C>, I>& rhs)
-  noexcept (noexcept (lhs.swap (rhs)))
+    noexcept (noexcept (lhs.swap (rhs)))
   {
     lhs.swap (rhs);
   }
@@ -907,7 +923,7 @@ namespace gch
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
   void swap (partition_subrange<vector_partition<T, N, C>, I>& lhs,
              partition_subrange<vector_partition<T, M, C>, J>& rhs)
-  noexcept (noexcept (lhs.swap (rhs)))
+    noexcept (noexcept (lhs.swap (rhs)))
   {
     lhs.swap (rhs);
   }
@@ -922,9 +938,9 @@ namespace gch
     return r;
   }
 
-template <typename T, std::size_t N, typename C, std::size_t I, typename Pred>
-typename partition_subrange<vector_partition<T, N, C>, I>::size_type
-erase_if (partition_subrange<vector_partition<T, N, C>, I>& c, Pred pred)
+  template <typename T, std::size_t N, typename C, std::size_t I, typename Pred>
+  typename partition_subrange<vector_partition<T, N, C>, I>::size_type
+  erase_if (partition_subrange<vector_partition<T, N, C>, I>& c, Pred pred)
   {
     auto it = std::remove_if (c.begin(), c.end(), pred);
     auto r  = std::distance (it, c.end());
@@ -1138,6 +1154,12 @@ erase_if (partition_subrange<vector_partition<T, N, C>, I>& c, Pred pred)
       return get_subrange<Index> (*this).advance_end (change);
     }
 
+    void swap (vector_partition& other)
+      noexcept (noexcept (std::declval<vector_partition&> ().partition_swap (other)))
+    {
+      first_type::partition_swap (other);
+    }
+
 #ifdef GCH_PARTITION_ITERATOR
 
     using iter   = partition_iterator<vector_partition>;
@@ -1171,6 +1193,12 @@ erase_if (partition_subrange<vector_partition<T, N, C>, I>& c, Pred pred)
 
   private:
   };
+
+  template <typename T, std::size_t N, typename Container>
+  void swap (vector_partition<T, N, Container>& lhs, vector_partition<T, N, Container>& rhs)
+  {
+    lhs.swap (rhs);
+  }
 
   template <typename T, typename Container, typename ...Partitions>
   vector_partition<T, total_subranges<Partitions...>::value, Container>

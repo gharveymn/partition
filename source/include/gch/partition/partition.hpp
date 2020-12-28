@@ -77,17 +77,6 @@
 namespace gch
 {
 
-  namespace adl
-  {
-    using std::swap;
-    namespace resolved
-    {
-      template <typename It>
-      auto swap (It& lhs, It& rhs) noexcept (noexcept (swap (lhs, rhs)))
-      -> decltype (swap (lhs, rhs));
-    }
-  }
-
   template <typename Partition, std::size_t Index, typename Enable = void>
   class partition_subrange;
 
@@ -670,12 +659,10 @@ namespace gch
     }
 
     GCH_CPP20_CONSTEXPR void swap (partition_view& other)
-      noexcept (noexcept (adl::resolved::swap (
-        std::declval<std::array<subrange_view_type, N>&> (),
-        std::declval<std::array<subrange_view_type, N>&> ())))
+      noexcept (noexcept (std::swap (std::declval<std::array<subrange_view_type, N>&> (),
+                                     std::declval<std::array<subrange_view_type, N>&> ())))
     {
-      using std::swap;
-      swap (m_subrange_views, other.m_subrange_views);
+      std::swap (m_subrange_views, other.m_subrange_views);
     }
 
     template <std::size_t Index>
