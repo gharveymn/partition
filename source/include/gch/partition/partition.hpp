@@ -219,7 +219,7 @@ namespace gch
     struct partition_resized_type_impl;
 
     template <std::size_t M, typename T, std::size_t N, typename Container,
-      template <typename, std::size_t, typename> class DecayedPartitionT>
+              template <typename, std::size_t, typename> class DecayedPartitionT>
     struct partition_resized_type_impl<M, DecayedPartitionT<T, N, Container>>
     {
       using type = DecayedPartitionT<T, M, Container>;
@@ -256,7 +256,7 @@ namespace gch
     : detail::partition_data_type_impl<void, typename std::decay<Partitions>::type...>
   { };
 
-  template <std::size_t M, typename Partition>
+  template <typename Partition, std::size_t M>
   struct partition_resized_type
     : detail::partition_resized_type_impl<M, typename std::decay<Partition>::type>
   { };
@@ -281,8 +281,8 @@ namespace gch
   template <typename ...Partitions>
   using partition_data_t = typename partition_data_type<Partitions...>::type;
 
-  template <std::size_t M, typename Partition>
-  using partition_resized_t = typename partition_resized_type<M, Partition>::type;
+  template <typename Partition, std::size_t M>
+  using partition_resized_t = typename partition_resized_type<Partition, M>::type;
 
   template <typename ...Partitions>
   using partition_cat_t = typename partition_cat_type<Partitions...>::type;
@@ -306,7 +306,7 @@ namespace gch
                          (partition_traits<Partition>::num_subranges - Index))) ||
       ((Offset < 0) && (static_cast<std::size_t> (-Offset) <= Index))>::type>
   {
-    using type = partition_element_t<Index + Offset, Partition>;
+    using type = partition_element_t<Index + static_cast<std::size_t> (Offset), Partition>;
   };
 
   template <typename Subrange, std::ptrdiff_t Offset = 1>

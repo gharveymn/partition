@@ -733,23 +733,9 @@ namespace gch
     template <std::size_t J = Index, typename std::enable_if<(J == N - 1)>::type * = nullptr>
     iter advance_end (diff_t change) = delete;
 
-  private:
-    template <typename U>
-    struct is_nothrow_swappable
-    {
-    private:
-      static constexpr bool test (void)
-      {
-        using std::swap;
-        return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
-      }
-    public:
-      static constexpr bool value = test ();
-    };
-
   protected:
     void partition_swap (partition_subrange& other)
-      noexcept (is_nothrow_swappable<size_t>::value &&
+      noexcept (next_type::template is_nothrow_swappable<size_t>::value &&
                 noexcept (std::declval<next_type&> ().partition_swap (other)))
     {
       using std::swap;
@@ -904,7 +890,7 @@ namespace gch
     iter advance_begin (diff_t) = delete;
     iter advance_end   (diff_t) = delete;
 
-  private:
+  protected:
     template <typename U>
     struct is_nothrow_swappable
     {
@@ -918,7 +904,6 @@ namespace gch
       static constexpr bool value = test ();
     };
 
-  protected:
     void partition_swap (partition_subrange& other)
       noexcept (is_nothrow_swappable<container_type>::value)
     {

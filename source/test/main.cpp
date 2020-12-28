@@ -915,6 +915,127 @@ void do_test_vector_partition (void)
 
 }
 
+template <typename Partition>
+void do_test_partition (void)
+{
+  Partition p1;
+  auto& r1 = get_subrange<0> (p1);
+  auto& r2 = get_subrange<1> (p1);
+  auto& r3 = get_subrange<2> (p1);
+
+  r1.emplace_back (1);
+  print_partition (p1);
+
+  r1.emplace_back (3);
+  print_partition (p1);
+
+  r3.emplace_back (7);
+  print_partition (p1);
+
+  r3.emplace_back (9);
+  print_partition (p1);
+
+  r2.emplace_back (17);
+  print_partition (p1);
+
+  auto& r22 = next_subrange (r1);
+  std::cout << "subrange: ";
+  print_subrange_view (r22.view ());
+
+  auto& parent_part = get_partition (r1);
+  static_cast<void> (parent_part);
+
+  auto& r11 = prev_subrange (r2);
+  static_cast<void> (r11);
+
+  partition_resized_t<Partition, 5> p2;
+  get_subrange<3> (p2).emplace_back (70);
+  get_subrange<3> (p2).emplace_back (12);
+  get_subrange<3> (p2).emplace_back (97);
+  get_subrange<3> (p2).emplace_back (82);
+
+  auto p3 = partition_cat (p1, p2);
+  auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
+
+  print_partition_view (p3.partition_view ());
+  print_partition_view (p4.partition_view ());
+
+  partition_resized_t<Partition, 3> p6 (typename Partition::data_allocator_type { });
+
+  auto pv = p1.partition_view ();
+  print_partition_view (pv);
+
+  const auto& y = p1;
+  auto cpv = y.partition_view ();
+  print_partition_view (cpv);
+
+  std::cout << "advance begin: \n";
+  get_subrange<2> (p4).advance_begin (1);
+  print_partition_view (p4.partition_view ());
+
+  std::cout << "advance end: \n";
+  get_subrange<9> (p4).advance_begin (3);
+  print_partition_view (p4.partition_view ());
+
+  try
+  {
+    p4.template advance_end<9> (100);
+  }
+  catch (...)
+  {
+    std::cout << "past end exception successfully caught" << std::endl;
+  }
+
+  try
+  {
+    p4.template advance_begin<9> (-100);
+  }
+  catch (...)
+  {
+    std::cout << "past begin exception successfully caught" << std::endl;
+  }
+
+  std::cout << std::endl;
+
+#ifdef GCH_PARTITION_ITERATOR
+
+  partition_iterator<decltype (p1)> it = p1.begin ();
+  partition_iterator<const decltype (p1)> cit = it;
+  static_cast<void> (cit);
+  for (const auto& e : p1)
+  {
+    std::visit ([] (auto&& arg) { std::cout << arg.get ().size (); }, e);
+  }
+  std::cout << std::endl;
+
+  for (const auto& e : p1)
+  {
+    std::visit (decltype (p1)::overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+
+  for (const auto& e : p1)
+  {
+    std::visit (p1.overload ([] (auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+
+  for (const auto& e : p1)
+  {
+    std::visit (partition_overload<decltype (p1)> ([](auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+
+  for (const auto& e : p1)
+  {
+    std::visit (partition_overload (p1, [](auto&& arg) { std::cout << arg.size (); }), e);
+  }
+  std::cout << std::endl;
+
+#endif
+
+}
+
 enum class key
 {
   first  = 0,
@@ -1026,6 +1147,12 @@ void do_test_enum_access (void)
 #endif
 }
 
+static_assert (std::is_same<next_subrange_t<partition_subrange<list_partition<int, 5>, 3>, 1>,
+                            partition_subrange<list_partition<int, 5>, 4>>::value);
+
+static_assert (std::is_same<next_subrange_t<partition_subrange<list_partition<int, 5>, 3>, -1>,
+                            partition_subrange<list_partition<int, 5>, 2>>::value);
+
 const int repeat = 1;
 
 int main (void)
@@ -1037,18 +1164,18 @@ int main (void)
   auto ts = clock::now ();
   for (int i = 0; i < repeat; ++i)
   {
-    do_test_list_partition ();
+    do_test_partition<list_partition<int, 3>> ();
   }
   auto tl = clock::now ();
 
   for (int i = 0; i < repeat; ++i)
   {
-    do_test_vector_partition ();
+    do_test_partition<vector_partition<int, 3>> ();
   }
   auto tv = clock::now ();
 
-  std::cout << "list took:   " << std::chrono::duration_cast<std::chrono::nanoseconds> (tl - ts).count () << " nanoseconds." << std::endl;
-  std::cout << "vector took: " << std::chrono::duration_cast<std::chrono::nanoseconds> (tv - ts).count () << " nanoseconds." << std::endl;
+  std::cout << "list took:      " << std::chrono::duration_cast<std::chrono::milliseconds> (tl - ts).count () << " milliseconds." << std::endl;
+  std::cout << "vector took:    " << std::chrono::duration_cast<std::chrono::milliseconds> (tv - ts).count () << " milliseconds." << std::endl;
 
 #ifdef GCH_TEMPLATE_AUTO
   do_test_enum_access ();

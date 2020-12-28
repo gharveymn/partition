@@ -449,28 +449,26 @@ namespace gch
       return next_subrange (*this).advance_begin (change);
     }
 
+  protected:
+    void partition_swap (partition_subrange& other)
+      noexcept (noexcept (std::declval<next_type&> ().partition_swap (other)))
+    {
+      next_type::partition_swap (other);
+    }
+
   private:
     static void set_first            (iter)        noexcept { }
     static void propagate_first_left (citer, iter) noexcept { }
 
     std::pair<citer, size_t> resize_pos (const size_t count) const
     {
-      citer cit;
       const size_t len = size ();
       if (count < len)
       {
         if (count <= len / 2)
-        {
-          cit = cbegin ();
-          std::advance (cit, count);
-        }
+          return { std::next (cbegin (), count), 0 };
         else
-        {
-          cit = cend ();
-          diff_t num_erase = len - count;
-          std::advance (cit, -num_erase);
-        }
-        return { cit, 0 };
+          return { std::next (cend (), static_cast<diff_t> (count - len)), 0 };
       }
       return { cend (), count - len };
     }
@@ -962,6 +960,16 @@ namespace gch
     template <std::size_t J = Index, typename std::enable_if<(J == N - 1)>::type * = nullptr>
     iter advance_end (diff_t change) = delete;
 
+  protected:
+    void partition_swap (partition_subrange& other)
+      noexcept (next_type::template is_nothrow_swappable<size_t>::value &&
+                noexcept (std::declval<next_type&> ().partition_swap (other)))
+    {
+      using std::swap;
+      swap (m_first, other.m_first);
+      next_type::partition_swap (other);
+    }
+
   private:
     void set_first (iter replace)
     {
@@ -1101,6 +1109,27 @@ namespace gch
 
     iter advance_begin (diff_t) = delete;
     iter advance_end   (diff_t) = delete;
+
+  protected:
+    template <typename U>
+    struct is_nothrow_swappable
+    {
+    private:
+      static constexpr bool test (void)
+      {
+        using std::swap;
+        return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
+      }
+    public:
+      static constexpr bool value = test ();
+    };
+
+    void partition_swap (partition_subrange& other)
+      noexcept (is_nothrow_swappable<container_type>::value)
+    {
+      using std::swap;
+      swap (m_container, other.m_container);
+    }
 
   private:
     static void propagate_first_right (citer, iter) noexcept { }
@@ -1320,6 +1349,12 @@ namespace gch
       return get_subrange<Index> (*this).advance_end (change);
     }
 
+    void swap (list_partition& other)
+      noexcept (noexcept (std::declval<list_partition&> ().partition_swap (other)))
+    {
+      first_type::partition_swap (other);
+    }
+
 #ifdef GCH_PARTITION_ITERATOR
 
     using iter   = partition_iterator<list_partition>;
@@ -1353,6 +1388,12 @@ namespace gch
 
 #endif
   };
+
+  template <typename T, std::size_t N, typename Container>
+  void swap (list_partition<T, N, Container>& lhs, list_partition<T, N, Container>& rhs)
+  {
+    lhs.swap (rhs);
+  }
 
   template <typename T, typename Container, typename ...Partitions>
   list_partition<T, total_subranges<Partitions...>::value, Container>
