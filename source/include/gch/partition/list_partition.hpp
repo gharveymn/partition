@@ -299,12 +299,12 @@ namespace gch
 
     void push_front (const value_t& val)
     {
-      insert (cbegin (), val);
+      m_container.push_front (val);
     }
 
     void push_front (value_t&& val)
     {
-      insert (cbegin (), std::move (val));
+      m_container.push_front (std::move (val));
     }
 
     template <typename ...Args>
@@ -315,7 +315,7 @@ namespace gch
 
     void pop_front (void)
     {
-      erase (cbegin ());
+      m_container.pop_front ();
     }
 
     template <std::size_t M, std::size_t J>
