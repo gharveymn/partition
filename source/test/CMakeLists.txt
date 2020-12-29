@@ -35,7 +35,6 @@ FOREACH(version ${TARGET_VERSIONS})
                         CXX_STANDARD          ${version}
                         CXX_STANDARD_REQUIRED NO
                         CXX_EXTENSIONS        NO)
-
 ENDFOREACH()
 
 ADD_SUBDIRECTORY(list)
