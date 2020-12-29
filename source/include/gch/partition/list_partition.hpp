@@ -320,23 +320,28 @@ namespace gch
 
     template <std::size_t M, std::size_t J>
     void swap (partition_subrange<list_partition<T, M, Container>, J>& other)
-      noexcept (noexcept (std::declval<container_type> ().swap (std::declval<container_type&> ())))
     {
       if (&other == this)
         return;
 
-      container_type tmp1;
-      container_type tmp2;
-      tmp1.splice (tmp1.cend (), std::move (m_container), cbegin (), cend ());
-      tmp2.splice (tmp2.cend (), std::move (other.m_container), other.cbegin (), other.cend ());
-      tmp1.swap (tmp2);
+      iter tmp_first = begin ();
 
-      iter new_first2 = tmp2.begin ();
+      other.m_container.splice (other.cend (), std::move (m_container), cbegin (), cend ());
+      m_container.splice (cend (), std::move (other.m_container), other.cbegin (), tmp_first);
 
-      m_container.splice (cend (), tmp1);
+      other.set_first (tmp_first);
+    }
 
-      other.m_container.splice (other.cend (), tmp2);
-      other.set_first (new_first2);
+    template <std::size_t M>
+    void swap (partition_subrange<list_partition<T, M, Container>, 0>& other)
+    {
+      if (&other == this)
+        return;
+
+      iter tmp_first = begin ();
+
+      other.m_container.splice (other.cend (), std::move (m_container), cbegin (), cend ());
+      m_container.splice (cend (), std::move (other.m_container), other.cbegin (), tmp_first);
     }
 
     template <std::size_t M, std::size_t J, typename ...Args>
@@ -841,25 +846,31 @@ namespace gch
 
     template <std::size_t M, std::size_t J>
     void swap (partition_subrange<list_partition<T, M, Container>, J>& other)
-      noexcept (noexcept (std::declval<container_type> ().swap (std::declval<container_type&> ())))
     {
       if (&other == this)
         return;
 
-      container_type tmp1;
-      container_type tmp2;
-      tmp1.splice (tmp1.cend (), std::move (m_container), cbegin (), cend ());
-      tmp2.splice (tmp2.cend (), std::move (other.m_container), other.cbegin (), other.cend ());
-      tmp1.swap (tmp2);
+      iter tmp_first = begin ();
 
-      iter new_first1 = tmp1.begin ();
-      iter new_first2 = tmp2.begin ();
+      other.m_container.splice (other.cend (), std::move (m_container), cbegin (), cend ());
+      m_container.splice (cend (), std::move (other.m_container), other.cbegin (), tmp_first);
 
-      m_container.splice (cend (), tmp1);
-      set_first (new_first1);
+      set_first (other.m_first);
+      other.set_first (tmp_first);
+    }
 
-      other.m_container.splice (other.cend (), tmp2);
-      other.set_first (new_first2);
+    template <std::size_t M>
+    void swap (partition_subrange<list_partition<T, M, Container>, 0>& other)
+    {
+      if (&other == this)
+        return;
+
+      iter other_first = other.begin ();
+
+      other.m_container.splice (other.cend (), std::move (m_container), cbegin (), cend ());
+      m_container.splice (cend (), std::move (other.m_container), other.cbegin (), m_first);
+
+      set_first (other_first);
     }
 
     template <std::size_t M, std::size_t J, typename ...Args>
