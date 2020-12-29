@@ -231,13 +231,33 @@ namespace gch
 
     void clear (void) noexcept
     {
-      m_container.erase (cbegin (), cend ());
+      erase (cbegin (), cend ());
     }
 
-    template <typename ...Args>
-    iter insert (const citer pos, Args&&... args)
+    iter insert (const citer pos, const value_t& lv)
     {
-      return m_container.insert (pos, std::forward<Args> (args)...);
+      return m_container.insert (pos, lv);
+    }
+
+    iter insert (const citer pos, value_t&& rv)
+    {
+      return m_container.insert (pos, std::move (rv));
+    }
+
+    iter insert (const citer pos, size_t count, const value_t& val)
+    {
+      return m_container.insert (pos, count, val);
+    }
+
+    template <typename Iterator>
+    iter insert (const citer pos, Iterator first, Iterator last)
+    {
+      return m_container.insert (pos, first, last);
+    }
+
+    iter insert (const citer pos, std::initializer_list<value_t> ilist)
+    {
+      return m_container.insert (pos, ilist);
     }
 
     template <typename ...Args>
@@ -256,16 +276,20 @@ namespace gch
       return m_container.erase (first, last);
     }
 
-    template <typename U>
-    void push_back (U&& val)
+    void push_back (const value_t& val)
     {
-      m_container.insert (end (), std::forward<U> (val));
+      insert (cend (), val);
+    }
+
+    void push_back (value_t&& val)
+    {
+      insert (cend (), std::move (val));
     }
 
     template <typename ...Args>
     ref emplace_back (Args&&... args)
     {
-      return *m_container.emplace (end (), std::forward<Args> (args)...);
+      return *emplace (cend (), std::forward<Args> (args)...);
     }
 
     void pop_back (void)
@@ -273,21 +297,25 @@ namespace gch
       erase (--cend ());
     }
 
-    template <typename U>
-    void push_front (U&& val)
+    void push_front (const value_t& val)
     {
-      m_container.push_front (std::forward<U> (val));
+      insert (cbegin (), val);
+    }
+
+    void push_front (value_t&& val)
+    {
+      insert (cbegin (), std::move (val));
     }
 
     template <typename ...Args>
     ref emplace_front (Args&&... args)
     {
-      return *m_container.emplace (begin (), std::forward<Args> (args)...);
+      return *emplace (cbegin (), std::forward<Args> (args)...);
     }
 
     void pop_front (void)
     {
-      m_container.pop_front ();
+      erase (cbegin ());
     }
 
     template <std::size_t M, std::size_t J>
@@ -307,7 +335,7 @@ namespace gch
 
       m_container.splice (cend (), tmp1);
 
-      other.m_container.splice (cend (), tmp2);
+      other.m_container.splice (other.cend (), tmp2);
       other.set_first (new_first2);
     }
 
@@ -679,10 +707,38 @@ namespace gch
       set_first (m_container.erase (cbegin (), cend ()));
     }
 
-    template <typename ...Args>
-    iter insert (const citer pos, Args&&... args)
+    iter insert (const citer pos, const value_t& lv)
     {
-      iter ret = m_container.insert (pos, std::forward<Args> (args)...);
+      iter ret = m_container.insert (pos, lv);
+      propagate_first_left (pos, ret);
+      return ret;
+    }
+
+    iter insert (const citer pos, value_t&& rv)
+    {
+      iter ret = m_container.insert (pos, std::move (rv));
+      propagate_first_left (pos, ret);
+      return ret;
+    }
+
+    iter insert (const citer pos, size_t count, const value_t& val)
+    {
+      iter ret = m_container.insert (pos, count, val);
+      propagate_first_left (pos, ret);
+      return ret;
+    }
+
+    template <typename Iterator>
+    iter insert (const citer pos, Iterator first, Iterator last)
+    {
+      iter ret = m_container.insert (pos, first, last);
+      propagate_first_left (pos, ret);
+      return ret;
+    }
+
+    iter insert (const citer pos, std::initializer_list<value_t> ilist)
+    {
+      iter ret = m_container.insert (pos, ilist);
       propagate_first_left (pos, ret);
       return ret;
     }
@@ -709,19 +765,20 @@ namespace gch
       return ret;
     }
 
-    template <typename U>
-    void push_back (U&& val)
+    void push_back (const value_t& val)
     {
-      iter it = m_container.insert (cend (), std::forward<U> (val));
-      propagate_first_left (cend (), it);
+      insert (cend (), val);
+    }
+
+    void push_back (value_t&& val)
+    {
+      insert (cend (), std::move (val));
     }
 
     template <typename ...Args>
     ref emplace_back (Args&&... args)
     {
-      iter ret = m_container.emplace (cend (), std::forward<Args> (args)...);
-      propagate_first_left (end (), ret);
-      return *ret;
+      return *emplace (cend (), std::forward<Args> (args)...);;
     }
 
     void pop_back (void)
@@ -729,10 +786,14 @@ namespace gch
       erase (--cend ());
     }
 
-    template <typename U>
-    void push_front (U&& val)
+    void push_front (const value_t& val)
     {
-      set_first (m_container.insert (cbegin (), std::forward<U> (val)));
+      set_first (m_container.insert (cbegin (), val));
+    }
+
+    void push_front (value_t&& val)
+    {
+      set_first (m_container.insert (cbegin (), std::move (val)));
     }
 
     template <typename ...Args>
@@ -797,7 +858,7 @@ namespace gch
       m_container.splice (cend (), tmp1);
       set_first (new_first1);
 
-      other.m_container.splice (cend (), tmp2);
+      other.m_container.splice (other.cend (), tmp2);
       other.set_first (new_first2);
     }
 

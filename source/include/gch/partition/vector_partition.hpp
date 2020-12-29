@@ -252,7 +252,6 @@ namespace gch
       return ret;
     }
 
-    template <typename ...Args>
     iter insert (const citer pos, size_t count, const value_t& val)
     {
       iter ret = m_container.insert (pos, count, val);
@@ -592,7 +591,6 @@ namespace gch
       return ret;
     }
 
-    template <typename ...Args>
     iter insert (const citer pos, size_t count, const value_t& val)
     {
       iter ret = m_container.insert (pos, count, val);
