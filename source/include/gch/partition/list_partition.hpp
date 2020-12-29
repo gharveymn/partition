@@ -477,7 +477,7 @@ namespace gch
 
   template <typename T, std::size_t N, typename Container, std::size_t Index>
   class partition_subrange<list_partition<T, N, Container>, Index,
-                                typename std::enable_if<(0 < Index) && (Index < N)>::type>
+                           typename std::enable_if<(0 < Index) && (Index < N)>::type>
     : public partition_subrange<list_partition<T, N, Container>, Index + 1>
   {
     template <typename, std::size_t, typename>
@@ -1393,13 +1393,6 @@ namespace gch
   void swap (list_partition<T, N, Container>& lhs, list_partition<T, N, Container>& rhs)
   {
     lhs.swap (rhs);
-  }
-
-  template <typename T, typename Container, typename ...Partitions>
-  list_partition<T, total_subranges<Partitions...>::value, Container>
-  partition_cat (Partitions&&... ps)
-  {
-    return { std::forward<Partitions> (ps)... };
   }
 
 #ifdef GCH_LIB_THREE_WAY_COMPARISON

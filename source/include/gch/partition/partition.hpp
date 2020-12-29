@@ -74,8 +74,34 @@
 #  endif
 #endif
 
+#ifndef GCH_VARIABLE_TEMPLATES
+#  if __cpp_variable_templates >= 201304L
+#  define GCH_VARIABLE_TEMPLATES
+#  endif
+#endif
+
+#ifndef GCH_INLINE_VAR
+#  if __cpp_inline_variables >= 201606L
+#    define GCH_INLINE_VAR inline
+#  else
+#    define GCH_INLINE_VAR
+#  endif
+#endif
+
 namespace gch
 {
+
+  namespace detail
+  {
+    template <typename From, typename To>
+    using match_ref_t = typename std::conditional<std::is_lvalue_reference<From>::value,
+                                                  typename std::add_lvalue_reference<To>::type,
+                                                  typename std::conditional<
+                                                    std::is_rvalue_reference<From>::value,
+                                                    typename std::add_rvalue_reference<To>::type,
+                                                    To>::type
+                                                 >::type;
+  }
 
   template <typename Partition, std::size_t Index, typename Enable = void>
   class partition_subrange;
@@ -106,6 +132,173 @@ namespace gch
     using data_allocator_type          = typename container_type::allocator_type;
   };
 
+  template <typename Partition>
+  struct partition_value_type
+  {
+    using type = typename partition_traits<Partition>::value_type;
+  };
+
+  template <typename ...Partitions>
+  using partition_value_t = typename partition_value_type<Partitions...>::type;
+
+  template <typename Partition>
+  struct partition_container_type
+  {
+    using type = typename partition_traits<Partition>::container_type;
+  };
+
+  template <typename ...Partitions>
+  using partition_container_t = typename partition_container_type<Partitions...>::type;
+
+  template <typename Partition>
+  struct partition_size
+    : std::integral_constant<std::size_t, partition_traits<Partition>::num_subranges>
+  { };
+
+  namespace detail
+  {
+    template <typename T,
+              typename U = typename std::remove_cv<T>::type,
+              typename = typename std::enable_if<std::is_same<T, U>::value>::type,
+              std::size_t = partition_size<T>::value>
+    using enable_if_has_partition_size = T;
+  }
+
+  template <typename Partition>
+  struct partition_size<const detail::enable_if_has_partition_size<Partition>>
+    : partition_size<Partition>
+  { };
+
+  template <typename Partition>
+  struct partition_size<volatile detail::enable_if_has_partition_size<Partition>>
+    : partition_size<Partition>
+  { };
+
+  template <typename Partition>
+  struct partition_size<const volatile detail::enable_if_has_partition_size<Partition>>
+    : partition_size<Partition>
+  { };
+
+#ifdef GCH_VARIABLE_TEMPLATES
+  template <typename Partition>
+  GCH_INLINE_VAR constexpr std::size_t partition_size_v = partition_size<Partition>::value;
+#endif
+
+  template <std::size_t I, typename Partition>
+  struct partition_element;
+
+  template <std::size_t Index, typename Partition>
+  using partition_element_t = typename partition_element<Index, Partition>::type;
+
+  template <std::size_t I, typename Partition>
+  struct partition_element
+  {
+    using type = partition_subrange<Partition, I>;
+  };
+
+  template <std::size_t I, typename Partition>
+  struct partition_element<I, const Partition>
+  {
+    using type = typename std::add_const<partition_element_t<I, Partition>>::type;
+  };
+
+  template <std::size_t I, typename Partition>
+  struct partition_element<I, volatile Partition>
+  {
+    using type = typename std::add_volatile<partition_element_t<I, Partition>>::type;
+  };
+
+  template <std::size_t I, typename Partition>
+  struct partition_element<I, const volatile Partition>
+  {
+    using type = typename std::add_cv<partition_element_t<I, Partition>>::type;
+  };
+
+  template <typename ...Partitions>
+  struct total_partition_size;
+
+  template <typename P>
+  struct total_partition_size<P>
+    : std::integral_constant<std::size_t, partition_size<P>::value>
+  { };
+
+  template <typename P, typename ...Rest>
+  struct total_partition_size<P, Rest...>
+    : std::integral_constant<std::size_t,
+                             partition_size<P>::value + total_partition_size<Rest...>::value>
+  { };
+
+#ifdef GCH_VARIABLE_TEMPLATES
+  template <typename ...Ps>
+  GCH_INLINE_VAR constexpr std::size_t total_partition_size_v = total_partition_size<Ps...>::value;
+#endif
+
+  template <typename Partition, std::size_t M>
+  struct partition_resized;
+
+  template <typename Partition, std::size_t M>
+  using partition_resized_t = typename partition_resized<Partition, M>::type;
+
+  template <template <typename, std::size_t, typename> class PartitionT,
+            typename T, std::size_t N, typename Container, std::size_t M>
+  struct partition_resized<PartitionT<T, N, Container>, M>
+  {
+    using type = PartitionT<T, M, Container>;
+  };
+
+  template <typename Partition, std::size_t M>
+  struct partition_resized<const Partition, M>
+  {
+    using type = typename std::add_const<partition_resized_t<Partition, M>>::type;
+  };
+
+  template <typename Partition, std::size_t M>
+  struct partition_resized<volatile Partition, M>
+  {
+    using type = typename std::add_volatile<partition_resized_t<Partition, M>>::type;
+  };
+
+  template <typename Partition, std::size_t M>
+  struct partition_resized<const volatile Partition, M>
+  {
+    using type = typename std::add_cv<partition_resized_t<Partition, M>>::type;
+  };
+
+  template <typename P, typename Q, typename = void>
+  struct is_compatible_partition
+    : std::false_type
+  { };
+
+  template <typename P, typename Q>
+  struct is_compatible_partition<P, Q,
+    typename std::enable_if<std::is_same<partition_value_t<P>,
+                                         partition_value_t<Q>>::value &&
+                            std::is_same<partition_container_t<P>,
+                                         partition_container_t<Q>>::value>::type>
+    : std::true_type
+  { };
+
+  namespace detail
+  {
+
+    template <typename P, typename Q,
+              typename = typename std::enable_if<is_compatible_partition<P, Q>::value>::type>
+    using enable_if_compatible_partition = Q;
+  };
+
+  template <typename ...Partitions>
+  struct partition_cat_type
+  { };
+
+  template <typename Partition, typename ...Rest>
+  struct partition_cat_type<Partition, detail::enable_if_compatible_partition<Partition, Rest>...>
+  {
+    using type = partition_resized_t<Partition, total_partition_size<Partition, Rest...>::value>;
+  };
+
+  template <typename ...Partitions>
+  using partition_cat_t = typename partition_cat_type<Partitions...>::type;
+
   template <typename Subrange>
   struct subrange_traits;
 
@@ -132,160 +325,11 @@ namespace gch
 
   };
 
-  template <typename Partition>
-  struct partition_size
-    : std::integral_constant<std::size_t, partition_traits<Partition>::num_subranges>
-  { };
-
-  template <std::size_t I, typename Partition>
-  struct partition_element;
-
-  template <std::size_t I, typename Partition>
-  struct partition_element
-  {
-    using type = partition_subrange<Partition, I>;
-  };
-
-  template <std::size_t I, typename P>
-  struct partition_element<I, const P>
-  {
-    using type = typename std::add_const<typename partition_element<I, P>::type>::type;
-  };
-
-  template <std::size_t I, typename P>
-  struct partition_element<I, volatile P>
-  {
-    using type = typename std::add_volatile<typename partition_element<I, P>::type>::type;
-  };
-
-  template <std::size_t I, typename P>
-  struct partition_element<I, const volatile P>
-  {
-    using type = typename std::add_cv<typename partition_element<I, P>::type>::type;
-  };
-
-  namespace detail
-  {
-    template <std::size_t Accum, typename ...Partitions>
-    struct total_subranges_impl;
-
-    template <std::size_t Accum>
-    struct total_subranges_impl<Accum>
-      : std::integral_constant<std::size_t, Accum>
-    { };
-
-    template <std::size_t Accum, typename Partition, typename ...Rest>
-    struct total_subranges_impl<Accum, Partition, Rest...>
-      : total_subranges_impl<Accum + partition_size<Partition>::value, Rest...>
-    { };
-
-    template <typename Void, typename ...DecayedPartitions>
-    struct partition_container_type_impl
-    { };
-
-    template <typename DecayedPartition>
-    struct partition_container_type_impl<void, DecayedPartition>
-    {
-      using type = typename DecayedPartition::container_type;
-    };
-
-    template <typename DecayedPartition, typename ...Rest>
-    struct partition_container_type_impl<
-      typename std::enable_if<std::is_same<typename DecayedPartition::container_type,
-                                           typename partition_container_type_impl<void, Rest...>::type>::value>::type,
-      DecayedPartition, Rest...>
-      : partition_container_type_impl<void, Rest...>
-    { };
-
-    template <typename Void, typename ...DecayedPartitions>
-    struct partition_data_type_impl
-    { };
-
-    template <typename DecayedPartition>
-    struct partition_data_type_impl<void, DecayedPartition>
-    {
-      using type = typename DecayedPartition::data_value_type;
-    };
-
-    template <typename DecayedPartition, typename ...Rest>
-    struct partition_data_type_impl<
-      typename std::enable_if<std::is_same<typename DecayedPartition::data_type,
-                                           typename partition_data_type_impl<void, Rest...>::type>::value>::type,
-      DecayedPartition, Rest...>
-      : partition_data_type_impl<void, Rest...>
-    { };
-
-    template <std::size_t M, typename DecayedPartition>
-    struct partition_resized_type_impl;
-
-    template <std::size_t M, typename T, std::size_t N, typename Container,
-              template <typename, std::size_t, typename> class DecayedPartitionT>
-    struct partition_resized_type_impl<M, DecayedPartitionT<T, N, Container>>
-    {
-      using type = DecayedPartitionT<T, M, Container>;
-    };
-
-    template <typename ...>
-    using void_t = void;
-
-    template <typename Void1, typename Void2, typename ...Partitions>
-    struct partition_cat_type_impl
-    { };
-
-    template <typename DecayedPartition, typename ...Rest>
-    struct partition_cat_type_impl<void_t<partition_data_type_impl<void, DecayedPartition>>,
-                                   void_t<partition_container_type_impl<void, DecayedPartition>>,
-                                   DecayedPartition, Rest...>
-      : partition_resized_type_impl<total_subranges_impl<0, DecayedPartition, Rest...>::value,
-                                    DecayedPartition>
-    { };
-  };
-
-  template <typename ...Partitions>
-  struct total_subranges
-    : detail::total_subranges_impl<0, typename std::decay<Partitions>::type...>
-  { };
-
-  template <typename ...Partitions>
-  struct partition_container_type
-    : detail::partition_container_type_impl<void, typename std::decay<Partitions>::type...>
-  { };
-
-  template <typename ...Partitions>
-  struct partition_data_type
-    : detail::partition_data_type_impl<void, typename std::decay<Partitions>::type...>
-  { };
-
-  template <typename Partition, std::size_t M>
-  struct partition_resized_type
-    : detail::partition_resized_type_impl<M, typename std::decay<Partition>::type>
-  { };
-
-  template <typename ...Partitions>
-  struct partition_cat_type
-    : detail::partition_cat_type_impl<void, void, typename std::decay<Partitions>::type...>
-  { };
-
   template <typename Subrange>
   struct partition_type
   {
     using type = typename subrange_traits<Subrange>::partition_type;
   };
-
-  template <std::size_t Index, typename Partition>
-  using partition_element_t = typename partition_element<Index, Partition>::type;
-
-  template <typename ...Partitions>
-  using partition_container_t = typename partition_container_type<Partitions...>::type;
-
-  template <typename ...Partitions>
-  using partition_data_t = typename partition_data_type<Partitions...>::type;
-
-  template <typename Partition, std::size_t M>
-  using partition_resized_t = typename partition_resized_type<Partition, M>::type;
-
-  template <typename ...Partitions>
-  using partition_cat_t = typename partition_cat_type<Partitions...>::type;
 
   template <typename Subrange>
   using partition_type_t = typename partition_type<Subrange>::type;
@@ -303,7 +347,7 @@ namespace gch
   struct next_subrange_type<partition_subrange<Partition, Index>, Offset,
     typename std::enable_if<
       ((Offset > 0) && (static_cast<std::size_t> (Offset) <=
-                         (partition_traits<Partition>::num_subranges - Index))) ||
+                        (partition_size<Partition>::value - Index))) ||
       ((Offset < 0) && (static_cast<std::size_t> (-Offset) <= Index))>::type>
   {
     using type = partition_element_t<Index + static_cast<std::size_t> (Offset), Partition>;
@@ -321,7 +365,8 @@ namespace gch
   using prev_subrange_t = typename prev_subrange_type<Subrange, Offset>::type;
 
   template <typename ...Partitions>
-  partition_cat_t<Partitions...> partition_cat (Partitions&&... ps)
+  partition_cat_t<typename std::remove_reference<Partitions>::type...>
+  partition_cat (Partitions&&... ps)
   {
     return { std::forward<Partitions> (ps)... };
   }
@@ -748,7 +793,7 @@ namespace gch
   private:
 
     template <std::size_t Index>
-    typename std::enable_if<(Index < partition_traits<nonconst_partition>::num_subranges)>::type
+    typename std::enable_if<(Index < partition_size<nonconst_partition>::value)>::type
     init_views (partition_type& p)
     {
       m_subrange_views[Index] = p.template subrange_view<Index> ();
@@ -756,7 +801,7 @@ namespace gch
     }
 
     template <std::size_t Index>
-    typename std::enable_if<(Index == partition_traits<nonconst_partition>::num_subranges)>::type
+    typename std::enable_if<(Index == partition_size<nonconst_partition>::value)>::type
     init_views (const partition_type&) { }
 
     view_array m_subrange_views;

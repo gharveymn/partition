@@ -256,41 +256,41 @@ struct valid_index<Subrange, Offset,
   : std::true_type
 { };
 
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>, -1>::value == false);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>,  0>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>,  1>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>,  2>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>,  3>::value == false);
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>, -1>::value == false, "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>,  0>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>,  1>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>,  2>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 0>,  3>::value == false, "range error");
 
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>, -2>::value == false);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>, -1>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>,  0>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>,  1>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>,  2>::value == false);
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>, -2>::value == false, "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>, -1>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>,  0>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>,  1>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>,  2>::value == false, "range error");
 
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>, -3>::value == false);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>, -2>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>, -1>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>,  0>::value == true);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>,  1>::value == false);
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>, -3>::value == false, "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>, -2>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>, -1>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>,  0>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<list_partition<int, 2>, 2>,  1>::value == false, "range error");
 
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>, -1>::value == false);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>,  0>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>,  1>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>,  2>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>,  3>::value == false);
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>, -1>::value == false, "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>,  0>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>,  1>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>,  2>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 0>,  3>::value == false, "range error");
 
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>, -2>::value == false);
-static_assert(valid_index<partition_subrange<list_partition<int, 2>, 1>, -1>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>,  0>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>,  1>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>,  2>::value == false);
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>, -2>::value == false, "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>, -1>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>,  0>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>,  1>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 1>,  2>::value == false, "range error");
 
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>, -3>::value == false);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>, -2>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>, -1>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>,  0>::value == true);
-static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>,  1>::value == false);
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>, -3>::value == false, "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>, -2>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>, -1>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>,  0>::value == true,  "range error");
+static_assert(valid_index<partition_subrange<vector_partition<int, 2>, 2>,  1>::value == false, "range error");
 
 class test_subrange
 {
@@ -1148,10 +1148,12 @@ void do_test_enum_access (void)
 }
 
 static_assert (std::is_same<next_subrange_t<partition_subrange<list_partition<int, 5>, 3>, 1>,
-                            partition_subrange<list_partition<int, 5>, 4>>::value);
+                            partition_subrange<list_partition<int, 5>, 4>>::value,
+                            "incorrect subrange type");
 
 static_assert (std::is_same<next_subrange_t<partition_subrange<list_partition<int, 5>, 3>, -1>,
-                            partition_subrange<list_partition<int, 5>, 2>>::value);
+                            partition_subrange<list_partition<int, 5>, 2>>::value,
+                            "incorrect subrange type");
 
 const int repeat = 1;
 

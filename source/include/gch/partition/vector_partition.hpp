@@ -1209,13 +1209,6 @@ namespace gch
     lhs.swap (rhs);
   }
 
-  template <typename T, typename Container, typename ...Partitions>
-  vector_partition<T, total_subranges<Partitions...>::value, Container>
-  partition_cat (Partitions&&... ps)
-  {
-    return { std::forward<Partitions> (ps)... };
-  }
-
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
