@@ -1033,41 +1033,15 @@ namespace gch
       : first_type (alloc)
     { }
 
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr partition_element_t<I, PartitionT<U, M, C>>&
-    get_subrange (PartitionT<U, M, C>& p) noexcept;
+    template <std::size_t I, typename Partition>
+    friend constexpr
+    match_ref_t<Partition, partition_element_t<I, typename std::remove_reference<Partition>::type>>
+    get_subrange (Partition&& p) noexcept;
 
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr const partition_element_t<I, PartitionT<U, M, C>>&
-    get_subrange (const PartitionT<U, M, C>& p) noexcept;
-
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr partition_element_t<I, PartitionT<U, M, C>>&&
-    get_subrange (PartitionT<U, M, C>&& p) noexcept;
-
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr const partition_element_t<I, PartitionT<U, M, C>>&&
-    get_subrange (const PartitionT<U, M, C>&& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr partition_type_t<partition_subrange<Partition, Index>>&
-    get_partition (partition_subrange<Partition, Index>& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr const partition_type_t<partition_subrange<Partition, Index>>&
-    get_partition (const partition_subrange<Partition, Index>& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr partition_type_t<partition_subrange<Partition, Index>>&&
-    get_partition (partition_subrange<Partition, Index>&& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr const partition_type_t<partition_subrange<Partition, Index>>&&
-    get_partition (const partition_subrange<Partition, Index>&& p) noexcept;
+    template <typename Subrange>
+    friend constexpr
+    match_ref_t<Subrange, partition_type_t<typename std::remove_reference<Subrange>::type>>
+    get_partition (Subrange&& s) noexcept;
 
     GCH_CPP14_CONSTEXPR subrange_type<0> front (void) noexcept
     {

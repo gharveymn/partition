@@ -90,18 +90,13 @@
 
 namespace gch
 {
-
-  namespace detail
-  {
-    template <typename From, typename To>
-    using match_ref_t = typename std::conditional<std::is_lvalue_reference<From>::value,
-                                                  typename std::add_lvalue_reference<To>::type,
-                                                  typename std::conditional<
-                                                    std::is_rvalue_reference<From>::value,
-                                                    typename std::add_rvalue_reference<To>::type,
-                                                    To>::type
-                                                 >::type;
-  }
+  template <typename From, typename To>
+  using match_ref_t = typename std::conditional<std::is_lvalue_reference<From>::value,
+                                                typename std::add_lvalue_reference<To>::type,
+                                                typename std::conditional<
+                                                  std::is_rvalue_reference<From>::value,
+                                                  typename std::add_rvalue_reference<To>::type,
+                                                  To>::type>::type;
 
   template <typename Partition, std::size_t Index, typename Enable = void>
   class partition_subrange;
@@ -335,7 +330,10 @@ namespace gch
   using partition_type_t = typename partition_type<Subrange>::type;
 
   template <typename Subrange, std::ptrdiff_t Offset = 1, typename Enable = void>
-  struct next_subrange_type { };
+  struct next_subrange_type;
+
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  using next_subrange_t = typename next_subrange_type<Subrange, Offset>::type;
 
   template <typename Subrange>
   struct next_subrange_type<Subrange, 0>
@@ -353,13 +351,28 @@ namespace gch
     using type = partition_element_t<Index + static_cast<std::size_t> (Offset), Partition>;
   };
 
+  template <typename Subrange, std::ptrdiff_t Offset>
+  struct next_subrange_type<const Subrange, Offset>
+  {
+    using type = typename std::add_const<next_subrange_t<Subrange, Offset>>::type;
+  };
+
+  template <typename Subrange, std::ptrdiff_t Offset>
+  struct next_subrange_type<volatile Subrange, Offset>
+  {
+    using type = typename std::add_volatile<next_subrange_t<Subrange, Offset>>::type;
+  };
+
+  template <typename Subrange, std::ptrdiff_t Offset>
+  struct next_subrange_type<const volatile Subrange, Offset>
+  {
+    using type = typename std::add_cv<next_subrange_t<Subrange, Offset>>::type;
+  };
+
   template <typename Subrange, std::ptrdiff_t Offset = 1>
   struct prev_subrange_type
     : next_subrange_type<Subrange, -Offset>
   { };
-
-  template <typename Subrange, std::ptrdiff_t Offset = 1>
-  using next_subrange_t = typename next_subrange_type<Subrange, Offset>::type;
 
   template <typename Subrange, std::ptrdiff_t Offset = 1>
   using prev_subrange_t = typename prev_subrange_type<Subrange, Offset>::type;
@@ -371,36 +384,45 @@ namespace gch
     return { std::forward<Partitions> (ps)... };
   }
 
-  template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-            typename T, std::size_t N, typename Container>
-  constexpr partition_element_t<I, PartitionT<T, N, Container>>&
-  get_subrange (PartitionT<T, N, Container>& p) noexcept
-  {
-    return static_cast<partition_element_t<I, PartitionT<T, N, Container>>&> (p);
-  }
+  // template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
+  //           typename T, std::size_t N, typename Container>
+  // constexpr partition_element_t<I, PartitionT<T, N, Container>>&
+  // get_subrange (PartitionT<T, N, Container>& p) noexcept
+  // {
+  //   return static_cast<partition_element_t<I, PartitionT<T, N, Container>>&> (p);
+  // }
+  //
+  // template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
+  //           typename T, std::size_t N, typename Container>
+  // constexpr const partition_element_t<I, PartitionT<T, N, Container>>&
+  // get_subrange (const PartitionT<T, N, Container>& p) noexcept
+  // {
+  //   return static_cast<const partition_element_t<I, PartitionT<T, N, Container>>&> (p);
+  // }
+  //
+  // template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
+  //           typename T, std::size_t N, typename Container>
+  // constexpr partition_element_t<I, PartitionT<T, N, Container>>&&
+  // get_subrange (PartitionT<T, N, Container>&& p) noexcept
+  // {
+  //   return static_cast<partition_element_t<I, PartitionT<T, N, Container>>&&> (p);
+  // }
+  //
+  // template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
+  //           typename T, std::size_t N, typename Container>
+  // constexpr const partition_element_t<I, PartitionT<T, N, Container>>&&
+  // get_subrange (const PartitionT<T, N, Container>&& p) noexcept
+  // {
+  //   return static_cast<const partition_element_t<I, PartitionT<T, N, Container>>&&> (p);
+  // }
 
-  template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-            typename T, std::size_t N, typename Container>
-  constexpr const partition_element_t<I, PartitionT<T, N, Container>>&
-  get_subrange (const PartitionT<T, N, Container>& p) noexcept
+  template <std::size_t I, typename Partition>
+  constexpr
+  match_ref_t<Partition, partition_element_t<I, typename std::remove_reference<Partition>::type>>
+  get_subrange (Partition&& p) noexcept
   {
-    return static_cast<const partition_element_t<I, PartitionT<T, N, Container>>&> (p);
-  }
-
-  template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-            typename T, std::size_t N, typename Container>
-  constexpr partition_element_t<I, PartitionT<T, N, Container>>&&
-  get_subrange (PartitionT<T, N, Container>&& p) noexcept
-  {
-    return static_cast<partition_element_t<I, PartitionT<T, N, Container>>&&> (p);
-  }
-
-  template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-            typename T, std::size_t N, typename Container>
-  constexpr const partition_element_t<I, PartitionT<T, N, Container>>&&
-  get_subrange (const PartitionT<T, N, Container>&& p) noexcept
-  {
-    return static_cast<const partition_element_t<I, PartitionT<T, N, Container>>&&> (p);
+    using subrange_type = partition_element_t<I, typename std::remove_reference<Partition>::type>;
+    return static_cast<match_ref_t<Partition, subrange_type>> (p);
   }
 
 #ifdef GCH_TEMPLATE_AUTO
@@ -449,88 +471,31 @@ namespace gch
 
 #endif
 
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr next_subrange_t<partition_subrange<Partition, Index>, Offset>&
-  next_subrange (partition_subrange<Partition, Index>& p) noexcept
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr
+  match_ref_t<Subrange, next_subrange_t<typename std::remove_reference<Subrange>::type, Offset>>
+  next_subrange (Subrange&& s) noexcept
   {
-    return static_cast<next_subrange_t<partition_subrange<Partition, Index>, Offset>&> (p);
+    using next_type = next_subrange_t<typename std::remove_reference<Subrange>::type, Offset>;
+    return static_cast<match_ref_t<Subrange, next_type>> (s);
   }
 
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr const next_subrange_t<partition_subrange<Partition, Index>, Offset>&
-  next_subrange (const partition_subrange<Partition, Index>& p) noexcept
+  template <typename Subrange, std::ptrdiff_t Offset = 1>
+  constexpr
+  match_ref_t<Subrange, prev_subrange_t<typename std::remove_reference<Subrange>::type, Offset>>
+  prev_subrange (Subrange&& s) noexcept
   {
-    return static_cast<const next_subrange_t<partition_subrange<Partition, Index>, Offset>&> (p);
+    using prev_type = prev_subrange_t<typename std::remove_reference<Subrange>::type, Offset>;
+    return static_cast<match_ref_t<Subrange, prev_type>> (s);
   }
 
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr next_subrange_t<partition_subrange<Partition, Index>, Offset>&&
-  next_subrange (partition_subrange<Partition, Index>&& p) noexcept
+  template <typename Subrange>
+  constexpr
+  match_ref_t<Subrange, partition_type_t<typename std::remove_reference<Subrange>::type>>
+  get_partition (Subrange&& s) noexcept
   {
-    return static_cast<next_subrange_t<partition_subrange<Partition, Index>, Offset>&&> (p);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr const next_subrange_t<partition_subrange<Partition, Index>, Offset>&&
-  next_subrange (const partition_subrange<Partition, Index>&& p) noexcept
-  {
-    return static_cast<const next_subrange_t<partition_subrange<Partition, Index>, Offset>&&> (p);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr prev_subrange_t<partition_subrange<Partition, Index>, Offset>&
-  prev_subrange (partition_subrange<Partition, Index>& p) noexcept
-  {
-    return static_cast<prev_subrange_t<partition_subrange<Partition, Index>, Offset>&> (p);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr const prev_subrange_t<partition_subrange<Partition, Index>, Offset>&
-  prev_subrange (const partition_subrange<Partition, Index>& p) noexcept
-  {
-    return static_cast<const prev_subrange_t<partition_subrange<Partition, Index>, Offset>&> (p);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr prev_subrange_t<partition_subrange<Partition, Index>, Offset>&&
-  prev_subrange (partition_subrange<Partition, Index>&& p) noexcept
-  {
-    return static_cast<prev_subrange_t<partition_subrange<Partition, Index>, Offset>&&> (p);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr const prev_subrange_t<partition_subrange<Partition, Index>, Offset>&&
-  prev_subrange (const partition_subrange<Partition, Index>&& p) noexcept
-  {
-    return static_cast<const prev_subrange_t<partition_subrange<Partition, Index>, Offset>&&> (p);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr partition_type_t<partition_subrange<Partition, Index>>&
-  get_partition (partition_subrange<Partition, Index>& p) noexcept
-  {
-    return static_cast<partition_type_t<partition_subrange<Partition, Index>>&> (p);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr const partition_type_t<partition_subrange<Partition, Index>>&
-  get_partition (const partition_subrange<Partition, Index>& p) noexcept
-  {
-    return static_cast<const partition_type_t<partition_subrange<Partition, Index>>&> (p);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr partition_type_t<partition_subrange<Partition, Index>>&&
-  get_partition (partition_subrange<Partition, Index>&& p) noexcept
-  {
-    return static_cast<partition_type_t<partition_subrange<Partition, Index>>&&> (p);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr const partition_type_t<partition_subrange<Partition, Index>>&&
-  get_partition (const partition_subrange<Partition, Index>&& p) noexcept
-  {
-    return static_cast<const partition_type_t<partition_subrange<Partition, Index>>&&> (p);
+    using partition_type = partition_type_t<typename std::remove_reference<Subrange>::type>;
+    return static_cast<match_ref_t<Subrange, partition_type>> (s);
   }
 
   template <typename Iterator>
