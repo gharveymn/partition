@@ -46,6 +46,22 @@
 #  endif
 #endif
 
+#ifndef GCH_ALG_CONSTEXPR
+#  if __cpp_lib_constexpr_algorithms >= 201806L
+#  define GCH_ALG_CONSTEXPR constexpr
+#  else
+#  define GCH_ALG_CONSTEXPR
+#  endif
+#endif
+
+#ifndef GCH_CPP17_NOEXCEPT
+#  if __cpp_constexpr >= 201603L
+#    define GCH_CPP17_NOEXCEPT noexcept
+#  else
+#    define GCH_CPP17_NOEXCEPT
+#  endif
+#endif
+
 #ifndef GCH_NODISCARD
 #  if __has_cpp_attribute(nodiscard) >= 201603L
 #    define GCH_NODISCARD [[nodiscard]]
@@ -620,14 +636,16 @@ namespace gch
 
     // copy from view of `partition_type` to view of `const partition_type`
     template <typename NonConst,
-      typename = typename std::enable_if<std::is_same<nonconst_partition, NonConst>::value>::type>
+              typename = typename std::enable_if<std::is_same<nonconst_partition,
+                                                              NonConst>::value>::type>
     /* implicit */ partition_view (const partition_view<NonConst, N>& other)
       : m_subrange_views (other.m_subrange_views)
     { }
 
     // move from view of `partition_type` to view of `const partition_type`
     template <typename NonConst,
-              typename = typename std::enable_if<std::is_same<nonconst_partition, NonConst>::value>::type>
+              typename = typename std::enable_if<std::is_same<nonconst_partition,
+                                                              NonConst>::value>::type>
     /* implicit */ partition_view (partition_view<NonConst, N>&& other)
       : m_subrange_views (std::move (other.m_subrange_views))
     { }
@@ -1056,35 +1074,6 @@ namespace gch
   {
     return partition_overloader<Partition, Fs...> (std::forward<Fs> (fs)...);
   }
-
-#endif
-
-#ifdef GCH_LIB_THREE_WAY_COMPARISON
-
-  namespace detail::compare
-  {
-
-    static constexpr struct synth_three_way_functor
-    {
-      template <typename T, typename U>
-      constexpr auto operator() (const T& lhs, const U& rhs) const
-        noexcept (noexcept (lhs <=> rhs))
-        requires std::three_way_comparable_with<T, U>
-      {
-        return lhs <=> rhs;
-      }
-
-      template <typename T, typename U>
-      constexpr auto operator() (const T& lhs, const U& rhs) const
-        requires (! std::three_way_comparable_with<T, U>)
-      {
-        return (lhs < rhs) ? std::weak_ordering::less
-                           : (rhs < lhs) ? std::weak_ordering::greater
-                                         : std::weak_ordering::equivalent;
-      }
-    } synth_three_way;
-
-  } // namespace gch::detail::compare
 
 #endif
 

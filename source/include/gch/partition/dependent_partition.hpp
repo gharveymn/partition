@@ -386,14 +386,14 @@ namespace gch
     std::array<subrange_type, N> m_subranges;
   };
 
-#ifdef GCH_LIB_THREE_WAY_COMPARISON
-
   template <typename Container>
-  constexpr bool operator== (const dependent_subrange<Container>& lhs,
-                             const dependent_subrange<Container>& rhs)
+  GCH_ALG_CONSTEXPR bool operator== (const dependent_subrange<Container>& lhs,
+                                     const dependent_subrange<Container>& rhs)
   {
     return std::equal (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
   }
+
+#ifdef GCH_LIB_THREE_WAY_COMPARISON
 
   template <typename Container>
   constexpr auto operator<=> (const dependent_subrange<Container>& lhs,
@@ -401,43 +401,71 @@ namespace gch
   {
     return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
                                                    rhs.begin (), rhs.end (),
-                                                   detail::compare::synth_three_way);
+                                                   std::compare_three_way { });
+  }
+
+  template <typename Container>
+  constexpr auto operator<=> (const dependent_subrange<Container>& lhs,
+                              const dependent_subrange<Container>& rhs)
+    requires std::three_way_comparable_with<typename Container::value_type,
+                                            typename Container::value_type>
+  {
+    return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
+                                                   rhs.begin (), rhs.end (),
+                                                   std::compare_three_way { });
+  }
+
+  template <typename Container>
+  constexpr auto operator<=> (const dependent_subrange<Container>& lhs,
+                              const dependent_subrange<Container>& rhs)
+    requires (! std::three_way_comparable_with<typename Container::value_type,
+                                               typename Container::value_type>)
+  {
+    constexpr auto comparison = [](typename Container::const_reference l,
+                                   typename Container::const_reference r)
+                                {
+                                  return (l < r) ? std::weak_ordering::less
+                                                 : (r < l) ? std::weak_ordering::greater
+                                                           : std::weak_ordering::equivalent;
+                                };
+    return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
+                                                   rhs.begin (), rhs.end (),
+                                                   comparison);
   }
 
 #else
 
   template <typename Container>
-  bool operator== (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
-  {
-    return std::equal (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
-  }
-
-  template <typename Container>
-  bool operator!= (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
+  bool operator!= (const dependent_subrange<Container>& lhs,
+                   const dependent_subrange<Container>& rhs)
   {
     return ! (lhs == rhs);
   }
 
   template <typename Container>
-  bool operator< (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
+  bool operator< (const dependent_subrange<Container>& lhs,
+                  const dependent_subrange<Container>& rhs)
   {
     return std::lexicographical_compare (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
   }
 
   template <typename Container>
-  bool operator<= (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
+  bool operator<= (const dependent_subrange<Container>& lhs,
+                   const dependent_subrange<Container>& rhs)
   {
     return ! (lhs > rhs);
   }
 
   template <typename Container>
-  bool operator> (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
+  bool operator> (const dependent_subrange<Container>& lhs,
+                  const dependent_subrange<Container>& rhs)
   {
-    return std::lexicographical_compare (rhs.begin (), rhs.end (), lhs.begin (), lhs.end ());
+    return rhs < lhs;
   }
 
   template <typename Container>
-  bool operator>= (const dependent_subrange<Container>& lhs, const dependent_subrange<Container>& rhs)
+  bool operator>= (const dependent_subrange<Container>& lhs,
+                   const dependent_subrange<Container>& rhs)
   {
     return ! (lhs < rhs);
   }

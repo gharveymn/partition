@@ -16,60 +16,6 @@
 #include <stdexcept>
 #include <vector>
 
-#ifndef GCH_CPP14_CONSTEXPR
-#  if __cpp_constexpr >= 201304L
-#    define GCH_CPP14_CONSTEXPR constexpr
-#  else
-#    define GCH_CPP14_CONSTEXPR
-#  endif
-#endif
-
-#ifndef GCH_CPP17_CONSTEXPR
-#  if __cpp_constexpr >= 201603L
-#    define GCH_CPP17_CONSTEXPR constexpr
-#  else
-#    define GCH_CPP17_CONSTEXPR
-#  endif
-#endif
-
-#ifndef GCH_CPP20_CONSTEXPR
-#  if __cpp_constexpr >= 201907L
-#    define GCH_CPP20_CONSTEXPR constexpr
-#  else
-#    define GCH_CPP20_CONSTEXPR
-#  endif
-#endif
-
-#ifndef GCH_CPP17_NOEXCEPT
-#  if __cpp_constexpr >= 201603L
-#    define GCH_CPP17_NOEXCEPT noexcept
-#  else
-#    define GCH_CPP17_NOEXCEPT
-#  endif
-#endif
-
-#ifndef GCH_NODISCARD
-#  if __has_cpp_attribute(nodiscard) >= 201603L
-#    define GCH_NODISCARD [[nodiscard]]
-#  else
-#    define GCH_NODISCARD
-#  endif
-#endif
-
-#if __cpp_impl_three_way_comparison >= 201907L
-#  ifndef GCH_IMPL_THREE_WAY_COMPARISON
-#    define GCH_IMPL_THREE_WAY_COMPARISON
-#  endif
-#  if __has_include(<compare>)
-#    include <compare>
-#    if __cpp_lib_three_way_comparison >= 201907L
-#      ifndef GCH_LIB_THREE_WAY_COMPARISON
-#        define GCH_LIB_THREE_WAY_COMPARISON
-#      endif
-#    endif
-#  endif
-#endif
-
 namespace gch
 {
 
@@ -1207,32 +1153,43 @@ namespace gch
     lhs.swap (rhs);
   }
 
+  template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
+  GCH_ALG_CONSTEXPR bool operator== (const partition_subrange<vector_partition<T, N, C>, I>& lhs,
+                                     const partition_subrange<vector_partition<T, M, C>, J>& rhs)
+  {
+    return lhs.size () == rhs.size () && std::equal (lhs.begin (), lhs.end (),
+                                                     rhs.begin (), rhs.end ());
+  }
+
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  constexpr bool operator== (const partition_subrange<vector_partition<T, N, C>, I>& lhs,
-                             const partition_subrange<vector_partition<T, M, C>, J>& rhs)
-  {
-    return std::equal (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
-  }
-
-  template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  bool operator<= (const partition_subrange<vector_partition<T, N, C>, I>& lhs,
-                   const partition_subrange<vector_partition<T, M, C>, J>& rhs)
+  constexpr auto operator<=> (const partition_subrange<vector_partition<T, N, C>, I>& lhs,
+                              const partition_subrange<vector_partition<T, M, C>, J>& rhs)
+    requires std::three_way_comparable_with<T, T>
   {
     return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
                                                    rhs.begin (), rhs.end (),
-                                                   detail::compare::synth_three_way);
+                                                   std::compare_three_way { });
+  }
+
+  template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
+  constexpr auto operator<=> (const partition_subrange<vector_partition<T, N, C>, I>& lhs,
+                              const partition_subrange<vector_partition<T, M, C>, J>& rhs)
+    requires (! std::three_way_comparable_with<T, T>)
+  {
+    constexpr auto comparison = [](const T& l, const T& r)
+                                {
+                                  return (l < r) ? std::weak_ordering::less
+                                                 : (r < l) ? std::weak_ordering::greater
+                                                           : std::weak_ordering::equivalent;
+                                };
+    return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
+                                                   rhs.begin (), rhs.end (),
+                                                   comparison);
   }
 
 #else
-
-  template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  bool operator== (const partition_subrange<vector_partition<T, N, C>, I>& lhs,
-                   const partition_subrange<vector_partition<T, M, C>, J>& rhs)
-  {
-    return std::equal (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
-  }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
   bool operator!= (const partition_subrange<vector_partition<T, N, C>, I>& lhs,
@@ -1259,7 +1216,7 @@ namespace gch
   bool operator> (const partition_subrange<vector_partition<T, N, C>, I>& lhs,
                   const partition_subrange<vector_partition<T, M, C>, J>& rhs)
   {
-    return std::lexicographical_compare (rhs.begin (), rhs.end (), lhs.begin (), lhs.end ());
+    return rhs < lhs;
   }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
