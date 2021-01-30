@@ -208,20 +208,14 @@ concept AllocatorAwareContainer =
 static_assert (AllocatorAwareContainer<std::list<int>, int, std::list<int>::allocator_type>);
 static_assert (! AllocatorAwareContainer<int, char, long>);
 
-static_assert (Container<gch::partition_subrange<gch::list_partition<int, 4>, 1>, int, std::list<int>::allocator_type>);
+// static_assert (Container<gch::partition_subrange<gch::list_partition<int, 4>, 1>, int, std::list<int>::allocator_type>);
 
 #endif
 
 namespace gch
 {
   template <typename From, typename To>
-  using match_ref_t = typename std::conditional<std::is_lvalue_reference<From>::value,
-                                                typename std::add_lvalue_reference<To>::type,
-                                                typename std::conditional<
-                                                  std::is_rvalue_reference<From>::value,
-                                                  typename std::add_rvalue_reference<To>::type,
-                                                  To>::type
-                                               >::type;
+  using match_ref_t = detail::match_ref_t<From, To>;
 
   template class list_partition<std::string, 4>;
   template class partition_subrange<list_partition<std::string, 4>, 0>;
@@ -393,7 +387,6 @@ private:
   std::list<int>::iterator m_pivot;
   dependent_subrange<std::list<int>> m_phi_range;
   dependent_subrange<std::list<int>> m_body_range;
-
 };
 
 class test_partition
@@ -1082,6 +1075,20 @@ enum key5
   fifth2,
 };
 
+enum class key6 : std::size_t
+{
+  all    = base_subrange_index,
+  first  = 0,
+  second = 1,
+};
+
+enum class key7 : int
+{
+  all    = -1,
+  first  =  0,
+  second =  1,
+};
+
 void do_test_enum_access (void)
 {
 #ifdef GCH_TEMPLATE_AUTO
@@ -1113,6 +1120,15 @@ void do_test_enum_access (void)
   // print (get_subrange<forth2> (x));
   // print (get_subrange<key4::fifth> (x));
   // print (get_subrange<fifth2> (x));
+
+  std::cout << "test all (std::size_t) \n" << std::endl;
+  print (get_subrange<key6::all> (x));
+  print (get_subrange<key6::first> (x));
+  print (get_subrange<key6::second> (x));
+  std::cout << "test all (int) \n" << std::endl;
+  print (get_subrange<key7::all> (x));
+  print (get_subrange<key7::first> (x));
+  print (get_subrange<key7::second> (x));
 
 #else
 

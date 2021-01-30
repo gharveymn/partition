@@ -61,7 +61,6 @@ namespace gch
   protected:
     using next_type::m_container;
 
-  public:
     partition_subrange            (void)                          = default;
     partition_subrange            (const partition_subrange&)     = default;
     partition_subrange            (partition_subrange&&) noexcept = default;
@@ -69,14 +68,16 @@ namespace gch
 //  partition_subrange& operator= (partition_subrange&&) noexcept = impl;
     ~partition_subrange           (void)                          = default;
 
-    partition_subrange& operator= (const partition_subrange& other) noexcept
+    partition_subrange&
+    operator= (const partition_subrange& other) noexcept
     {
       if (&other != this)
         assign (other.begin (), other.end ());
       return *this;
     }
 
-    partition_subrange& operator= (partition_subrange&& other) noexcept
+    partition_subrange&
+    operator= (partition_subrange&& other) noexcept
     {
       if (! other.empty ())
       {
@@ -87,41 +88,43 @@ namespace gch
       return *this;
     }
 
-  protected:
     template <std::size_t M, typename ...Subranges>
-    constexpr partition_subrange (const partition_subrange<list_partition<T, M, Container>, 0>& other,
-                                       Subranges&&... subranges)
+    constexpr
+    partition_subrange (const partition_subrange<list_partition<T, M, Container>, 0>& other,
+                        Subranges&&... subranges)
       : next_type (next_subrange (other), std::forward<Subranges> (subranges)...)
     { }
 
     template <std::size_t M, typename ...Subranges>
-    constexpr partition_subrange (partition_subrange<list_partition<T, M, Container>, 0>&& other,
-                                        Subranges&&... subranges)
+    constexpr
+    partition_subrange (partition_subrange<list_partition<T, M, Container>, 0>&& other,
+                        Subranges&&... subranges)
       : next_type (next_subrange (other), std::forward<Subranges> (subranges)...)
     { }
 
     template <std::size_t M, typename ...Subranges>
-    constexpr partition_subrange (list_partition<T, M, Container>&& partition,
-                                       Subranges&&... subranges)
-      : partition_subrange (get_subrange<0> (partition),
-                                 std::forward<Subranges> (subranges)...)
+    constexpr
+    partition_subrange (list_partition<T, M, Container>&& partition, Subranges&&... subranges)
+      : partition_subrange (get_subrange<0> (partition), std::forward<Subranges> (subranges)...)
     { }
 
     template <std::size_t M, typename ...Subranges>
-    constexpr partition_subrange (const list_partition<T, M, Container>& partition,
-                                       Subranges&&... subranges)
-      : partition_subrange (get_subrange<0> (partition),
-                                 std::forward<Subranges> (subranges)...)
+    constexpr
+    partition_subrange (const list_partition<T, M, Container>& partition, Subranges&&... subranges)
+      : partition_subrange (get_subrange<0> (partition), std::forward<Subranges> (subranges)...)
     { }
 
-    constexpr explicit partition_subrange (const alloc_t& alloc)
+    constexpr explicit
+    partition_subrange (const alloc_t& alloc)
       : next_type (alloc)
     { }
 
-  public:
-    explicit partition_subrange (iter) { }
+    explicit
+    partition_subrange (iter) { }
 
-    void assign (size_t count, const value_t& val)
+  public:
+    void
+    assign (size_t count, const value_t& val)
     {
       iter it = begin ();
       for (; it != end () && count != 0; ++it, --count)
@@ -134,7 +137,8 @@ namespace gch
     }
 
     template <typename It>
-    void assign (It first, It last)
+    void
+    assign (It first, It last)
     {
       iter curr = begin ();
       for (; curr != end () && first != last; ++curr, (void)++first)
@@ -146,134 +150,157 @@ namespace gch
         insert(end (), first, last);
     }
 
-    void assign (std::initializer_list<value_t> ilist)
+    void
+    assign (std::initializer_list<value_t> ilist)
     {
       assign (ilist.begin (), ilist.end ());
     }
 
-    GCH_NODISCARD iter   begin  (void)       noexcept { return m_container.begin ();              }
-    GCH_NODISCARD citer  begin  (void) const noexcept { return m_container.cbegin ();             }
-    GCH_NODISCARD citer  cbegin (void) const noexcept { return m_container.cbegin ();             }
+    GCH_NODISCARD iter   begin  (void)       noexcept { return m_container.begin ();  }
+    GCH_NODISCARD citer  begin  (void) const noexcept { return m_container.cbegin (); }
+    GCH_NODISCARD citer  cbegin (void) const noexcept { return m_container.cbegin (); }
 
-    GCH_NODISCARD iter   end     (void)       noexcept { return next_type::begin ();              }
-    GCH_NODISCARD citer  end     (void) const noexcept { return next_type::cbegin ();             }
-    GCH_NODISCARD citer  cend    (void) const noexcept { return next_type::cbegin ();             }
+    GCH_NODISCARD iter   end     (void)       noexcept { return next_type::begin ();  }
+    GCH_NODISCARD citer  end     (void) const noexcept { return next_type::cbegin (); }
+    GCH_NODISCARD citer  cend    (void) const noexcept { return next_type::cbegin (); }
 
-    GCH_NODISCARD riter  rbegin  (void)       noexcept { return next_type::rend ();               }
-    GCH_NODISCARD criter rbegin  (void) const noexcept { return next_type::crend ();              }
-    GCH_NODISCARD criter crbegin (void) const noexcept { return next_type::crend ();              }
+    GCH_NODISCARD riter  rbegin  (void)       noexcept { return next_type::rend ();   }
+    GCH_NODISCARD criter rbegin  (void) const noexcept { return next_type::crend ();  }
+    GCH_NODISCARD criter crbegin (void) const noexcept { return next_type::crend ();  }
 
-    GCH_NODISCARD riter  rend    (void)       noexcept { return m_container.rend ();              }
-    GCH_NODISCARD criter rend    (void) const noexcept { return m_container.crend ();             }
-    GCH_NODISCARD criter crend   (void) const noexcept { return m_container.crend ();             }
+    GCH_NODISCARD riter  rend    (void)       noexcept { return m_container.rend ();  }
+    GCH_NODISCARD criter rend    (void) const noexcept { return m_container.crend (); }
+    GCH_NODISCARD criter crend   (void) const noexcept { return m_container.crend (); }
 
-    GCH_NODISCARD GCH_CPP14_CONSTEXPR ref&   front   (void)       noexcept { return *begin ();    }
-    GCH_NODISCARD constexpr           cref&  front   (void) const noexcept { return *begin ();    }
+    GCH_NODISCARD ref&   front   (void)       noexcept { return *begin ();            }
+    GCH_NODISCARD cref&  front   (void) const noexcept { return *begin ();            }
 
-    GCH_NODISCARD GCH_CPP14_CONSTEXPR ref&   back    (void)       noexcept { return *(--end ());  }
-    GCH_NODISCARD constexpr           cref&  back    (void) const noexcept { return *(--cend ()); }
+    GCH_NODISCARD ref&   back    (void)       noexcept { return *(--end ());          }
+    GCH_NODISCARD cref&  back    (void) const noexcept { return *(--cend ());         }
 
-    GCH_NODISCARD GCH_CPP17_CONSTEXPR std::size_t size (void) const noexcept
+    GCH_NODISCARD GCH_CPP17_CONSTEXPR
+    std::size_t
+    size (void) const noexcept
     {
       return std::distance (cbegin (), cend ());
     }
 
-    GCH_NODISCARD bool empty (void) const noexcept
+    GCH_NODISCARD
+    bool
+    empty (void) const noexcept
     {
       return cbegin () == cend ();
     }
 
-    void clear (void) noexcept
+    void
+    clear (void) noexcept
     {
       erase (cbegin (), cend ());
     }
 
-    iter insert (const citer pos, const value_t& lv)
+    iter
+    insert (const citer pos, const value_t& lv)
     {
       return m_container.insert (pos, lv);
     }
 
-    iter insert (const citer pos, value_t&& rv)
+    iter
+    insert (const citer pos, value_t&& rv)
     {
       return m_container.insert (pos, std::move (rv));
     }
 
-    iter insert (const citer pos, size_t count, const value_t& val)
+    iter
+    insert (const citer pos, size_t count, const value_t& val)
     {
       return m_container.insert (pos, count, val);
     }
 
     template <typename Iterator>
-    iter insert (const citer pos, Iterator first, Iterator last)
+    iter
+    insert (const citer pos, Iterator first, Iterator last)
     {
       return m_container.insert (pos, first, last);
     }
 
-    iter insert (const citer pos, std::initializer_list<value_t> ilist)
+    iter
+    insert (const citer pos, std::initializer_list<value_t> ilist)
     {
       return m_container.insert (pos, ilist);
     }
 
     template <typename ...Args>
-    iter emplace (const citer pos, Args&&... args)
+    iter
+    emplace (const citer pos, Args&&... args)
     {
       return m_container.emplace (pos, std::forward<Args> (args)...);
     }
 
-    iter erase (const citer pos)
+    iter
+    erase (const citer pos)
     {
       return m_container.erase (pos);
     }
 
-    iter erase (const citer first, const citer last)
+    iter
+    erase (const citer first, const citer last)
     {
       return m_container.erase (first, last);
     }
 
-    void push_back (const value_t& val)
+    void
+    push_back (const value_t& val)
     {
       insert (cend (), val);
     }
 
-    void push_back (value_t&& val)
+    void
+    push_back (value_t&& val)
     {
       insert (cend (), std::move (val));
     }
 
     template <typename ...Args>
-    ref emplace_back (Args&&... args)
+    ref
+    emplace_back (Args&&... args)
     {
       return *emplace (cend (), std::forward<Args> (args)...);
     }
 
-    void pop_back (void)
+    void
+    pop_back (void)
     {
       erase (--cend ());
     }
 
-    void push_front (const value_t& val)
+    void
+    push_front (const value_t& val)
     {
       m_container.push_front (val);
     }
 
-    void push_front (value_t&& val)
+    void
+    push_front (value_t&& val)
     {
       m_container.push_front (std::move (val));
     }
 
     template <typename ...Args>
-    ref emplace_front (Args&&... args)
+    ref
+    emplace_front (Args&&... args)
     {
       return *emplace (cbegin (), std::forward<Args> (args)...);
     }
 
-    void pop_front (void)
+    void
+    pop_front (void)
     {
       m_container.pop_front ();
     }
 
     template <std::size_t M, std::size_t J>
-    void swap (partition_subrange<list_partition<T, M, Container>, J>& other)
+    void
+    swap (partition_subrange<list_partition<T, M, Container>, J>& other)
     {
       if (&other == this)
         return;
@@ -287,7 +314,8 @@ namespace gch
     }
 
     template <std::size_t M>
-    void swap (partition_subrange<list_partition<T, M, Container>, 0>& other)
+    void
+    swap (partition_subrange<list_partition<T, M, Container>, 0>& other)
     {
       if (&other == this)
         return;
@@ -299,13 +327,15 @@ namespace gch
     }
 
     template <std::size_t M, std::size_t J, typename ...Args>
-    void merge (partition_subrange<list_partition<T, M, Container>, J>& other, Args&&... args)
+    void
+    merge (partition_subrange<list_partition<T, M, Container>, J>& other, Args&&... args)
     {
       merge (std::move (other), std::forward<Args> (args)...);
     }
 
     template <std::size_t M, std::size_t J, typename ...Args>
-    void merge (partition_subrange<list_partition<T, M, Container>, J>&& other, Args&&... args)
+    void
+    merge (partition_subrange<list_partition<T, M, Container>, J>&& other, Args&&... args)
     {
       if (&other == this)
         return;
@@ -320,21 +350,24 @@ namespace gch
     }
 
     template <std::size_t M, std::size_t J, typename ...Args>
-    void splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>& other,
+    void
+    splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>& other,
                  Args&&... args)
     {
       splice (pos, std::move (other), std::forward<Args> (args)...);
     }
 
     template <std::size_t M, std::size_t J>
-    void splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other)
+    void
+    splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other)
     {
       m_container.splice (pos, std::move (other.m_container), other.cbegin (), other.cend ());
       other.set_first (other.end ());
     }
 
     template <std::size_t M, std::size_t J>
-    void splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
+    void
+    splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
                  citer it)
     {
       iter new_other_front = std::next (it);
@@ -343,20 +376,23 @@ namespace gch
     }
 
     template <std::size_t M, std::size_t J>
-    void splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
+    void
+    splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
                  citer first, citer last)
     {
       m_container.splice (pos, std::move (other.m_container), first, last);
       other.propagate_first_left (first, last);
     }
 
-    size_t remove (const T& val)
+    size_t
+    remove (const T& val)
     {
       return remove_if ([&val] (cref elem) { return elem == val; });
     }
 
     template <typename UnaryPredicate>
-    size_t remove_if (UnaryPredicate p)
+    size_t
+    remove_if (UnaryPredicate p)
     {
       container_type tmp;
       tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
@@ -371,7 +407,8 @@ namespace gch
     }
 
     template <typename ...Args>
-    void unique (Args&&... args)
+    void
+    unique (Args&&... args)
     {
       container_type tmp;
       tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
@@ -380,7 +417,8 @@ namespace gch
     }
 
     template <typename ...Args>
-    void sort (Args&&... args)
+    void
+    sort (Args&&... args)
     {
       container_type tmp;
       tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
@@ -388,7 +426,8 @@ namespace gch
       m_container.splice (cend (), tmp);
     }
 
-    void resize (size_t count)
+    void
+    resize (size_t count)
     {
       std::pair<citer, size_t> pos = resize_pos (count);
       if (pos.second != 0)
@@ -410,7 +449,8 @@ namespace gch
         erase (pos.first, cend ());
     }
 
-    void resize (size_t count, const value_t& val)
+    void
+    resize (size_t count, const value_t& val)
     {
       std::pair<citer, size_t> pos = resize_pos (count);
       if (pos.second != 0)
@@ -419,25 +459,30 @@ namespace gch
         erase (pos.first, cend ());
     }
 
-    subrange_view<iter> view (void)
+    subrange_view<iter>
+    view (void)
     {
       return { begin (), end () };
     }
 
-    subrange_view<citer> view (void) const
+    subrange_view<citer>
+    view (void) const
     {
       return { begin (), end () };
     }
 
-    iter advance_begin (diff_t) = delete;
+    iter
+    advance_begin (diff_t) = delete;
 
-    iter advance_end (diff_t change)
+    iter
+    advance_end (diff_t change)
     {
       return next_subrange (*this).advance_begin (change);
     }
 
   protected:
-    void partition_swap (partition_subrange& other)
+    void
+    partition_swap (partition_subrange& other)
       noexcept (noexcept (std::declval<next_type&> ().partition_swap (other)))
     {
       next_type::partition_swap (other);
@@ -447,7 +492,8 @@ namespace gch
     static void set_first            (iter)        noexcept { }
     static void propagate_first_left (citer, iter) noexcept { }
 
-    std::pair<citer, size_t> resize_pos (const size_t count) const
+    std::pair<citer, size_t>
+    resize_pos (const size_t count) const
     {
       const size_t len = size ();
       if (count < len)
@@ -503,7 +549,6 @@ namespace gch
   protected:
     using next_type::m_container;
 
-  public:
 //  partition_subrange            (void)                          = impl;
 //  partition_subrange            (const partition_subrange&)     = impl;
 //  partition_subrange            (partition_subrange&&) noexcept = impl;
@@ -527,14 +572,16 @@ namespace gch
         m_first (other.m_first)
     { }
 
-    partition_subrange& operator= (const partition_subrange& other) noexcept
+    partition_subrange&
+    operator= (const partition_subrange& other) noexcept
     {
       if (&other != this)
         assign (other.begin (), other.end ());
       return *this;
     }
 
-    partition_subrange& operator= (partition_subrange&& other) noexcept
+    partition_subrange&
+    operator= (partition_subrange&& other) noexcept
     {
       if (! other.empty ())
       {
@@ -545,9 +592,9 @@ namespace gch
       return *this;
     }
 
-  protected:
     template <std::size_t M, std::size_t J, typename ...Subranges,
       typename std::enable_if<(J < M)>::type * = nullptr>
+    constexpr
     partition_subrange (const partition_subrange<list_partition<T, M, Container>, J>& other,
                              Subranges&&... subranges)
       : next_type (next_subrange (other), std::forward<Subranges> (subranges)...),
@@ -566,6 +613,7 @@ namespace gch
 
     template <std::size_t M, std::size_t J, typename ...Subranges,
               typename std::enable_if<(J < M)>::type * = nullptr>
+    constexpr
     partition_subrange (partition_subrange<list_partition<T, M, Container>, J>&& other,
                              Subranges&&... subranges)
       : next_type (next_subrange (other), std::forward<Subranges> (subranges)...),
@@ -581,25 +629,29 @@ namespace gch
     }
 
     template <std::size_t M, typename ...Subranges>
-    constexpr partition_subrange (list_partition<T, M, Container>&& partition,
+    constexpr
+    partition_subrange (list_partition<T, M, Container>&& partition,
                                        Subranges&&... subranges)
       : partition_subrange (get_subrange<0> (partition),
                                  std::forward<Subranges> (subranges)...)
     { }
 
     template <std::size_t M, typename ...Subranges>
-    constexpr partition_subrange (const list_partition<T, M, Container>& partition,
+    constexpr
+    partition_subrange (const list_partition<T, M, Container>& partition,
                                        Subranges&&... subranges)
       : partition_subrange (get_subrange<0> (partition),
                                  std::forward<Subranges> (subranges)...)
     { }
 
-    constexpr explicit partition_subrange (const alloc_t& alloc)
+    constexpr explicit
+    partition_subrange (const alloc_t& alloc)
       : next_type (alloc)
     { }
 
   public:
-    void assign (size_t count, const value_t& val)
+    void
+    assign (size_t count, const value_t& val)
     {
       iter it = begin ();
       for (; it != end () && count != 0; ++it, --count)
@@ -612,7 +664,8 @@ namespace gch
     }
 
     template <typename It>
-    void assign (It first, It last)
+    void
+    assign (It first, It last)
     {
       iter curr = begin ();
       for (; curr != end () && first != last; ++curr, (void)++first)
@@ -624,63 +677,72 @@ namespace gch
         insert(end (), first, last);
     }
 
-    void assign (std::initializer_list<value_t> ilist)
+    void
+    assign (std::initializer_list<value_t> ilist)
     {
       assign (ilist.begin (), ilist.end ());
     }
 
-    GCH_NODISCARD iter  begin  (void)       noexcept { return m_first;                            }
-    GCH_NODISCARD citer begin  (void) const noexcept { return citer (m_first);                    }
-    GCH_NODISCARD citer cbegin (void) const noexcept { return citer (m_first);                    }
+    GCH_NODISCARD iter  begin  (void)       noexcept { return m_first;                }
+    GCH_NODISCARD citer begin  (void) const noexcept { return citer (m_first);        }
+    GCH_NODISCARD citer cbegin (void) const noexcept { return citer (m_first);        }
 
-    GCH_NODISCARD iter   end     (void)       noexcept { return next_type::begin ();              }
-    GCH_NODISCARD citer  end     (void) const noexcept { return next_type::cbegin ();             }
-    GCH_NODISCARD citer  cend    (void) const noexcept { return next_type::cbegin ();             }
+    GCH_NODISCARD iter   end     (void)       noexcept { return next_type::begin ();  }
+    GCH_NODISCARD citer  end     (void) const noexcept { return next_type::cbegin (); }
+    GCH_NODISCARD citer  cend    (void) const noexcept { return next_type::cbegin (); }
 
-    GCH_NODISCARD riter  rbegin  (void)       noexcept { return next_type::rend ();               }
-    GCH_NODISCARD criter rbegin  (void) const noexcept { return next_type::crend ();              }
-    GCH_NODISCARD criter crbegin (void) const noexcept { return next_type::crend ();              }
+    GCH_NODISCARD riter  rbegin  (void)       noexcept { return next_type::rend ();   }
+    GCH_NODISCARD criter rbegin  (void) const noexcept { return next_type::crend ();  }
+    GCH_NODISCARD criter crbegin (void) const noexcept { return next_type::crend ();  }
 
-    GCH_NODISCARD riter  rend    (void)       noexcept { return riter (begin ());                 }
-    GCH_NODISCARD criter rend    (void) const noexcept { return criter (cbegin ());               }
-    GCH_NODISCARD criter crend   (void) const noexcept { return criter (cbegin ());               }
+    GCH_NODISCARD riter  rend    (void)       noexcept { return riter (begin ());     }
+    GCH_NODISCARD criter rend    (void) const noexcept { return criter (cbegin ());   }
+    GCH_NODISCARD criter crend   (void) const noexcept { return criter (cbegin ());   }
 
-    GCH_NODISCARD GCH_CPP14_CONSTEXPR ref&   front   (void)       noexcept { return *begin ();    }
-    GCH_NODISCARD constexpr           cref&  front   (void) const noexcept { return *begin ();    }
+    GCH_NODISCARD ref&   front   (void)       noexcept { return *begin ();            }
+    GCH_NODISCARD cref&  front   (void) const noexcept { return *begin ();            }
 
-    GCH_NODISCARD GCH_CPP14_CONSTEXPR ref&   back    (void)       noexcept { return *(--end ());  }
-    GCH_NODISCARD constexpr           cref&  back    (void) const noexcept { return *(--cend ()); }
+    GCH_NODISCARD ref&   back    (void)       noexcept { return *(--end ());          }
+    GCH_NODISCARD cref&  back    (void) const noexcept { return *(--cend ());         }
 
-    GCH_NODISCARD GCH_CPP17_CONSTEXPR std::size_t size (void) const noexcept
+    GCH_NODISCARD
+    std::size_t
+    size (void) const noexcept
     {
       return std::distance (cbegin (), cend ());
     }
 
-    GCH_NODISCARD bool empty (void) const noexcept
+    GCH_NODISCARD
+    bool
+    empty (void) const noexcept
     {
       return cbegin () == cend ();
     }
 
-    void clear (void) noexcept
+    void
+    clear (void) noexcept
     {
       set_first (m_container.erase (cbegin (), cend ()));
     }
 
-    iter insert (const citer pos, const value_t& lv)
+    iter
+    insert (const citer pos, const value_t& lv)
     {
       iter ret = m_container.insert (pos, lv);
       propagate_first_left (pos, ret);
       return ret;
     }
 
-    iter insert (const citer pos, value_t&& rv)
+    iter
+    insert (const citer pos, value_t&& rv)
     {
       iter ret = m_container.insert (pos, std::move (rv));
       propagate_first_left (pos, ret);
       return ret;
     }
 
-    iter insert (const citer pos, size_t count, const value_t& val)
+    iter
+    insert (const citer pos, size_t count, const value_t& val)
     {
       iter ret = m_container.insert (pos, count, val);
       propagate_first_left (pos, ret);
@@ -688,14 +750,16 @@ namespace gch
     }
 
     template <typename Iterator>
-    iter insert (const citer pos, Iterator first, Iterator last)
+    iter
+    insert (const citer pos, Iterator first, Iterator last)
     {
       iter ret = m_container.insert (pos, first, last);
       propagate_first_left (pos, ret);
       return ret;
     }
 
-    iter insert (const citer pos, std::initializer_list<value_t> ilist)
+    iter
+    insert (const citer pos, std::initializer_list<value_t> ilist)
     {
       iter ret = m_container.insert (pos, ilist);
       propagate_first_left (pos, ret);
@@ -703,71 +767,83 @@ namespace gch
     }
 
     template <typename ...Args>
-    iter emplace (const citer pos, Args&&... args)
+    iter
+    emplace (const citer pos, Args&&... args)
     {
       iter ret = m_container.emplace (pos, std::forward<Args> (args)...);
       propagate_first_left (pos, ret);
       return ret;
     }
 
-    iter erase (const citer pos)
+    iter
+    erase (const citer pos)
     {
       iter ret = m_container.erase (pos);
       propagate_first_left (pos, ret);
       return ret;
     }
 
-    iter erase (const citer first, const citer last)
+    iter
+    erase (const citer first, const citer last)
     {
       iter ret = m_container.erase (first, last);
       propagate_first_left (first, ret);
       return ret;
     }
 
-    void push_back (const value_t& val)
+    void
+    push_back (const value_t& val)
     {
       insert (cend (), val);
     }
 
-    void push_back (value_t&& val)
+    void
+    push_back (value_t&& val)
     {
       insert (cend (), std::move (val));
     }
 
     template <typename ...Args>
-    ref emplace_back (Args&&... args)
+    ref
+    emplace_back (Args&&... args)
     {
       return *emplace (cend (), std::forward<Args> (args)...);;
     }
 
-    void pop_back (void)
+    void
+    pop_back (void)
     {
       erase (--cend ());
     }
 
-    void push_front (const value_t& val)
+    void
+    push_front (const value_t& val)
     {
       set_first (m_container.insert (cbegin (), val));
     }
 
-    void push_front (value_t&& val)
+    void
+    push_front (value_t&& val)
     {
       set_first (m_container.insert (cbegin (), std::move (val)));
     }
 
     template <typename ...Args>
-    ref emplace_front (Args&&... args)
+    ref
+    emplace_front (Args&&... args)
     {
       set_first (m_container.emplace (cbegin (), std::forward<Args> (args)...));
       return *begin ();
     }
 
-    void pop_front (void)
+    void
+    pop_front (void)
     {
       set_first (m_container.erase (cbegin ()));
     }
 
-    void resize (const size_t count)
+    void
+    resize (const size_t count)
     {
       std::pair<citer, size_t> pos = resize_pos (count);
       if (pos.second != 0)
@@ -789,7 +865,8 @@ namespace gch
         erase (pos.first, cend ());
     }
 
-    void resize (const size_t count, const value_t& val)
+    void
+    resize (const size_t count, const value_t& val)
     {
       std::pair<citer, size_t> pos = resize_pos (count);
       if (pos.second != 0)
@@ -799,7 +876,8 @@ namespace gch
     }
 
     template <std::size_t M, std::size_t J>
-    void swap (partition_subrange<list_partition<T, M, Container>, J>& other)
+    void
+    swap (partition_subrange<list_partition<T, M, Container>, J>& other)
     {
       if (&other == this)
         return;
@@ -814,7 +892,8 @@ namespace gch
     }
 
     template <std::size_t M>
-    void swap (partition_subrange<list_partition<T, M, Container>, 0>& other)
+    void
+    swap (partition_subrange<list_partition<T, M, Container>, 0>& other)
     {
       if (&other == this)
         return;
@@ -828,13 +907,15 @@ namespace gch
     }
 
     template <std::size_t M, std::size_t J, typename ...Args>
-    void merge (partition_subrange<list_partition<T, M, Container>, J>& other, Args&&... args)
+    void
+    merge (partition_subrange<list_partition<T, M, Container>, J>& other, Args&&... args)
     {
       merge (std::move (other), std::forward<Args> (args)...);
     }
 
     template <std::size_t M, std::size_t J, typename ...Args>
-    void merge (partition_subrange<list_partition<T, M, Container>, J>&& other, Args&&... args)
+    void
+    merge (partition_subrange<list_partition<T, M, Container>, J>&& other, Args&&... args)
     {
       if (&other == this)
         return;
@@ -852,14 +933,16 @@ namespace gch
     }
 
     template <std::size_t M, std::size_t J, typename ...Args>
-    void splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>& other,
+    void
+    splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>& other,
                  Args&&... args)
     {
       splice (pos, std::move (other), std::forward<Args> (args)...);
     }
 
     template <std::size_t M, std::size_t J>
-    void splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other)
+    void
+    splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other)
     {
       iter first = other.begin ();
       m_container.splice (pos, std::move (other.m_container), first, other.cend ());
@@ -868,7 +951,8 @@ namespace gch
     }
 
     template <std::size_t M, std::size_t J>
-    void splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
+    void
+    splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
                  const citer cit)
     {
       citer new_other_front = std::next (cit);
@@ -878,7 +962,8 @@ namespace gch
     }
 
     template <std::size_t M, std::size_t J>
-    void splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
+    void
+    splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
                  const citer first, const citer last)
     {
       m_container.splice (pos, std::move (other.m_container), first, last);
@@ -886,13 +971,15 @@ namespace gch
       propagate_first_left (pos, first);
     }
 
-    size_t remove (const T& val)
+    size_t
+    remove (const T& val)
     {
       return remove_if ([&val] (cref elem) { return elem == val; });
     }
 
     template <typename UnaryPredicate>
-    size_t remove_if (UnaryPredicate p)
+    size_t
+    remove_if (UnaryPredicate p)
     {
       container_type tmp;
       tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
@@ -909,7 +996,8 @@ namespace gch
     }
 
     template <typename ...Args>
-    void unique (Args&&... args)
+    void
+    unique (Args&&... args)
     {
       container_type tmp;
       tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
@@ -920,7 +1008,8 @@ namespace gch
     }
 
     template <typename ...Args>
-    void sort (Args&&... args)
+    void
+    sort (Args&&... args)
     {
       container_type tmp;
       tmp.splice (tmp.end (), std::move (m_container), cbegin (), cend ());
@@ -930,17 +1019,20 @@ namespace gch
       set_first (new_first);
     }
 
-    subrange_view<iter> view (void)
+    subrange_view<iter>
+    view (void)
     {
       return { begin (), end () };
     }
 
-    subrange_view<citer> view (void) const
+    subrange_view<citer>
+    view (void) const
     {
       return { begin (), end () };
     }
 
-    iter advance_begin (diff_t change)
+    iter
+    advance_begin (diff_t change)
     {
       if (change > 0)
       {
@@ -948,7 +1040,7 @@ namespace gch
         for (diff_t i = 0; i < change; ++i, static_cast<void> (++res))
         {
           if (res == m_container.end ())
-            throw std::out_of_range ("requested change of subrange offset is out of range");
+            throw std::out_of_range ("The requested change of subrange offset is out of range.");
         }
 
         // rest should be noexcept
@@ -964,7 +1056,7 @@ namespace gch
         for (diff_t i = 0; i > change; --i, static_cast<void> (--res))
         {
           if (res == m_container.begin ())
-            throw std::out_of_range ("requested change of subrange offset is out of range");
+            throw std::out_of_range ("The requested change of subrange offset is out of range.");
         }
 
         // rest should be noexcept
@@ -978,16 +1070,19 @@ namespace gch
     }
 
     template <std::size_t J = Index, typename std::enable_if<(J < N - 1)>::type * = nullptr>
-    iter advance_end (diff_t change)
+    iter
+    advance_end (diff_t change)
     {
       return next_subrange (*this).advance_begin (change);
     }
 
     template <std::size_t J = Index, typename std::enable_if<(J == N - 1)>::type * = nullptr>
-    iter advance_end (diff_t change) = delete;
+    iter
+    advance_end (diff_t change) = delete;
 
   protected:
-    void partition_swap (partition_subrange& other)
+    void
+    partition_swap (partition_subrange& other)
       noexcept (next_type::template is_nothrow_swappable<size_t>::value &&
                 noexcept (std::declval<next_type&> ().partition_swap (other)))
     {
@@ -997,13 +1092,15 @@ namespace gch
     }
 
   private:
-    void set_first (iter replace)
+    void
+    set_first (iter replace)
     {
       prev_subrange (*this).propagate_first_left (m_first, replace);
       m_first = replace;
     }
 
-    void propagate_first_left (citer cmp, iter replace) noexcept
+    void
+    propagate_first_left (citer cmp, iter replace) noexcept
     {
       if (m_first == cmp)
       {
@@ -1012,7 +1109,8 @@ namespace gch
       }
     }
 
-    void propagate_first_right (citer cmp, iter replace) noexcept
+    void
+    propagate_first_right (citer cmp, iter replace) noexcept
     {
       if (m_first == cmp)
       {
@@ -1021,7 +1119,8 @@ namespace gch
       }
     }
 
-    std::pair<citer, size_t> resize_pos (const size_t count) const
+    std::pair<citer, size_t>
+    resize_pos (const size_t count) const
     {
       const size_t len = size ();
       if (count < len)
@@ -1037,10 +1136,12 @@ namespace gch
     iter m_first;
   };
 
-  // end case holds the actual container
   template <typename T, std::size_t N, typename Container>
   class partition_subrange<list_partition<T, N, Container>, N>
+    : public partition_subrange<list_partition<T, N, Container>, base_subrange_index>
   {
+    using base = partition_subrange<list_partition<T, N, Container>, base_subrange_index>;
+
     template <typename, std::size_t, typename>
     friend class partition_subrange;
 
@@ -1074,7 +1175,9 @@ namespace gch
     using value_t = value_type;
     using alloc_t = allocator_type;
 
-  public:
+  protected:
+    using base::m_container;
+
     partition_subrange            (void)                          = default;
     partition_subrange            (const partition_subrange&)     = default;
     partition_subrange            (partition_subrange&&) noexcept = default;
@@ -1082,75 +1185,84 @@ namespace gch
     partition_subrange& operator= (partition_subrange&&) noexcept = default;
     ~partition_subrange           (void)                          = default;
 
-  protected:
     template <std::size_t M>
+    constexpr
     partition_subrange (const partition_subrange<list_partition<T, M, Container>, M>& other)
-      : m_container (other.m_container)
+      : base (get_base (other))
     { }
 
     template <std::size_t M>
+    constexpr
     partition_subrange (partition_subrange<list_partition<T, M, Container>, M>&& other)
-      : m_container (std::move (other.m_container))
+      : base (std::move (get_base (other)))
     { }
 
-    explicit partition_subrange (const alloc_t& alloc)
-      : m_container (alloc)
+    constexpr explicit
+    partition_subrange (const alloc_t& alloc)
+      : base (alloc)
     { }
 
   public:
-    GCH_NODISCARD iter   begin  (void)       noexcept { return m_container.end ();  }
-    GCH_NODISCARD citer  begin  (void) const noexcept { return m_container.cend (); }
-    GCH_NODISCARD citer  cbegin (void) const noexcept { return m_container.cend (); }
-
-    iter   end     (void)       = delete;
-    iter   end     (void) const = delete;
-    citer  cend    (void)       = delete;
+    GCH_NODISCARD iter   begin  (void)       noexcept { return m_container.end ();     }
+    GCH_NODISCARD citer  begin  (void) const noexcept { return m_container.cend ();    }
+    GCH_NODISCARD citer  cbegin (void) const noexcept { return m_container.cend ();    }
 
     GCH_NODISCARD riter  rend   (void)       noexcept { return m_container.rbegin ();  }
     GCH_NODISCARD criter rend   (void) const noexcept { return m_container.crbegin (); }
     GCH_NODISCARD criter crend  (void) const noexcept { return m_container.crbegin (); }
 
-    riter   rbegin  (void)       = delete;
-    criter  rbegin  (void) const = delete;
-    criter  crbegin (void)       = delete;
-
-    ref&   front   (void)       = delete;
-    cref&  front   (void) const = delete;
-
-    ref&   back    (void)       = delete;
-    cref&  back    (void) const = delete;
-
-    alloc_t get_allocator (void) const noexcept
+    alloc_t
+    get_allocator (void) const noexcept
     {
       return m_container.get_allocator ();
     }
 
-    GCH_NODISCARD size_t max_size (void) const noexcept
+    GCH_NODISCARD
+    size_t
+    max_size (void) const noexcept
     {
       return m_container.max_size ();
     }
 
-    subrange_view<iter>  view (void)       = delete;
-    subrange_view<citer> view (void) const = delete;
+    iter                 end           (void)       = delete;
+    iter                 end           (void) const = delete;
+    citer                cend          (void)       = delete;
 
-    iter advance_begin (diff_t) = delete;
-    iter advance_end   (diff_t) = delete;
+    riter                rbegin        (void)       = delete;
+    criter               rbegin        (void) const = delete;
+    criter               crbegin       (void)       = delete;
+
+    ref&                 front         (void)       = delete;
+    cref&                front         (void) const = delete;
+
+    ref&                 back          (void)       = delete;
+    cref&                back          (void) const = delete;
+
+    subrange_view<iter>  view          (void)       = delete;
+    subrange_view<citer> view          (void) const = delete;
+
+    iter                 advance_begin (diff_t)     = delete;
+    iter                 advance_end   (diff_t)     = delete;
 
   protected:
     template <typename U>
     struct is_nothrow_swappable
     {
     private:
-      static constexpr bool test (void)
+      static constexpr
+      bool
+      test (void)
       {
         using std::swap;
         return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
       }
+
     public:
       static constexpr bool value = test ();
     };
 
-    void partition_swap (partition_subrange& other)
+    void
+    partition_swap (partition_subrange& other)
       noexcept (is_nothrow_swappable<container_type>::value)
     {
       using std::swap;
@@ -1159,13 +1271,160 @@ namespace gch
 
   private:
     static void propagate_first_right (citer, iter) noexcept { }
+  };
+
+  // holds the container
+  template <typename T, std::size_t N, typename Container>
+  class partition_subrange<list_partition<T, N, Container>, base_subrange_index>
+  {
+    template <typename, std::size_t, typename>
+    friend class partition_subrange;
+
+  public:
+    using partition_type = list_partition<T, N, Container>;
+    using subrange_type  = partition_subrange<partition_type, base_subrange_index>;
+//  using prev_type      = void;
+//  using next_type      = void;
+
+    using container_type         = Container;
+    using iterator               = typename Container::iterator;
+    using const_iterator         = typename Container::const_iterator;
+    using reverse_iterator       = typename Container::reverse_iterator;
+    using const_reverse_iterator = typename Container::const_reverse_iterator;
+    using reference              = typename Container::reference;
+    using const_reference        = typename Container::const_reference;
+    using size_type              = typename Container::size_type;
+    using difference_type        = typename Container::difference_type;
+    using value_type             = typename Container::value_type;
+    using allocator_type         = typename Container::allocator_type;
+
+  private:
+    using iter    = iterator;
+    using citer   = const_iterator;
+    using riter   = reverse_iterator;
+    using criter  = const_reverse_iterator;
+    using ref     = reference;
+    using cref    = const_reference;
+    using size_t  = size_type;
+    using diff_t  = difference_type;
+    using value_t = value_type;
+    using alloc_t = allocator_type;
+
+  protected:
+    partition_subrange            (void)                          = default;
+    partition_subrange            (const partition_subrange&)     = default;
+    partition_subrange            (partition_subrange&&) noexcept = default;
+    partition_subrange& operator= (const partition_subrange&)     = default;
+    partition_subrange& operator= (partition_subrange&&) noexcept = default;
+    ~partition_subrange           (void)                          = default;
+
+    template <std::size_t M>
+    partition_subrange (const partition_subrange<list_partition<T, M, Container>,
+                                                 base_subrange_index>& other)
+      : m_container (other.m_container)
+    { }
+
+    template <std::size_t M>
+    partition_subrange (partition_subrange<list_partition<T, M, Container>,
+                                           base_subrange_index>&& other)
+      : m_container (std::move (other.m_container))
+    { }
+
+    explicit
+    partition_subrange (const alloc_t& alloc)
+      : m_container (alloc)
+    { }
+
+  public:
+    alloc_t
+    get_allocator (void) const noexcept
+    {
+      return m_container.get_allocator ();
+    }
+
+    iter   begin   (void)       noexcept { return m_container.begin ();   }
+    citer  begin   (void) const noexcept { return m_container.begin ();   }
+    citer  cbegin  (void) const noexcept { return m_container.cbegin ();  }
+
+    iter   end     (void)       noexcept { return m_container.end ();     }
+    citer  end     (void) const noexcept { return m_container.end ();     }
+    citer  cend    (void) const noexcept { return m_container.cend ();    }
+
+    riter  rbegin  (void)       noexcept { return m_container.rbegin ();  }
+    criter rbegin  (void) const noexcept { return m_container.rbegin ();  }
+    criter crbegin (void) const noexcept { return m_container.crbegin (); }
+
+    riter  rend    (void)       noexcept { return m_container.rend ();    }
+    criter rend    (void) const noexcept { return m_container.rend ();    }
+    criter crend   (void) const noexcept { return m_container.crend ();   }
+
+    ref    front   (void)       noexcept { return m_container.front ();   }
+    cref   front   (void) const noexcept { return m_container.front ();   }
+
+    ref    back    (void)       noexcept { return m_container.back ();    }
+    cref   back    (void) const noexcept { return m_container.back ();    }
+
+    size_t size    (void) const noexcept { return m_container.size ();    }
+
+    GCH_NODISCARD
+    bool
+    empty (void) const noexcept
+    {
+      return m_container.empty ();
+    }
+
+    GCH_NODISCARD
+    size_t
+    max_size (void) const noexcept
+    {
+      return m_container.max_size ();
+    }
+
+    subrange_view<iter>
+    view (void)
+    {
+      return { begin (), end () };
+    }
+
+    subrange_view<citer>
+    view (void) const
+    {
+      return { begin (), end () };
+    }
+
+  protected:
+    template <typename U>
+    struct is_nothrow_swappable
+    {
+    private:
+      static constexpr
+      bool
+      test (void)
+      {
+        using std::swap;
+        return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
+      }
+
+    public:
+      static constexpr bool value = test ();
+    };
+
+    void
+    partition_swap (partition_subrange& other)
+      noexcept (is_nothrow_swappable<container_type>::value)
+    {
+      using std::swap;
+      swap (m_container, other.m_container);
+    }
 
   protected:
     container_type m_container;
   };
 
   template <typename T, std::size_t N, typename C, std::size_t I>
-  void swap (partition_subrange<list_partition<T, N, C>, I>& lhs,
+  inline
+  void
+  swap (partition_subrange<list_partition<T, N, C>, I>& lhs,
              partition_subrange<list_partition<T, N, C>, I>& rhs)
     noexcept (noexcept (lhs.swap (rhs)))
   {
@@ -1173,7 +1432,9 @@ namespace gch
   }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  void swap (partition_subrange<list_partition<T, N, C>, I>& lhs,
+  inline
+  void
+  swap (partition_subrange<list_partition<T, N, C>, I>& lhs,
              partition_subrange<list_partition<T, M, C>, J>& rhs)
     noexcept (noexcept (lhs.swap (rhs)))
   {
@@ -1181,6 +1442,7 @@ namespace gch
   }
 
   template <typename T, std::size_t N, typename C, std::size_t I, typename U>
+  inline
   typename partition_subrange<list_partition<T, N, C>, I>::size_type
   erase (partition_subrange<list_partition<T, N, C>, I>& c, const U& val)
   {
@@ -1188,6 +1450,7 @@ namespace gch
   }
 
   template <typename T, std::size_t N, typename C, std::size_t I, typename Pred>
+  inline
   typename partition_subrange<list_partition<T, N, C>, I>::size_type
   erase_if (partition_subrange<list_partition<T, N, C>, I>& c, Pred pred)
   {
@@ -1235,71 +1498,90 @@ namespace gch
 
     // concatenation constructor
     template <std::size_t M, typename ...Partitions>
-    constexpr list_partition (const list_partition<T, M, Container>& p, Partitions&&... ps)
+    constexpr
+    list_partition (const list_partition<T, M, Container>& p, Partitions&&... ps)
       : first_type (get_subrange<0> (p), std::forward<Partitions> (ps)...)
     { }
 
     template <std::size_t M, typename ...Partitions>
-    constexpr list_partition (list_partition<T, M, Container>&& p, Partitions&&... ps)
+    constexpr
+    list_partition (list_partition<T, M, Container>&& p, Partitions&&... ps)
       : first_type (get_subrange<0> (p), std::forward<Partitions> (ps)...)
     { }
 
-    constexpr explicit list_partition (const data_alloc_t& alloc)
+    constexpr explicit
+    list_partition (const data_alloc_t& alloc)
       : first_type (alloc)
     { }
 
     template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
               typename U, std::size_t M, typename C>
-    friend constexpr partition_element_t<I, PartitionT<U, M, C>>&
+    friend constexpr
+    partition_element_t<I, PartitionT<U, M, C>>&
     get_subrange (PartitionT<U, M, C>& p) noexcept;
 
     template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
               typename U, std::size_t M, typename C>
-    friend constexpr const partition_element_t<I, PartitionT<U, M, C>>&
+    friend constexpr
+    const partition_element_t<I, PartitionT<U, M, C>>&
     get_subrange (const PartitionT<U, M, C>& p) noexcept;
 
     template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
               typename U, std::size_t M, typename C>
-    friend constexpr partition_element_t<I, PartitionT<U, M, C>>&&
+    friend constexpr
+    partition_element_t<I, PartitionT<U, M, C>>&&
     get_subrange (PartitionT<U, M, C>&& p) noexcept;
 
     template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
               typename U, std::size_t M, typename C>
-    friend constexpr const partition_element_t<I, PartitionT<U, M, C>>&&
+    friend constexpr
+    const partition_element_t<I, PartitionT<U, M, C>>&&
     get_subrange (const PartitionT<U, M, C>&& p) noexcept;
 
     template <typename Partition, std::size_t Index>
-    friend constexpr partition_type_t<partition_subrange<Partition, Index>>&
+    friend constexpr
+    partition_type_t<partition_subrange<Partition, Index>>&
     get_partition (partition_subrange<Partition, Index>& p) noexcept;
 
     template <typename Partition, std::size_t Index>
-    friend constexpr const partition_type_t<partition_subrange<Partition, Index>>&
+    friend constexpr
+    const partition_type_t<partition_subrange<Partition, Index>>&
     get_partition (const partition_subrange<Partition, Index>& p) noexcept;
 
     template <typename Partition, std::size_t Index>
-    friend constexpr partition_type_t<partition_subrange<Partition, Index>>&&
+    friend constexpr
+    partition_type_t<partition_subrange<Partition, Index>>&&
     get_partition (partition_subrange<Partition, Index>&& p) noexcept;
 
     template <typename Partition, std::size_t Index>
-    friend constexpr const partition_type_t<partition_subrange<Partition, Index>>&&
+    friend constexpr
+    const partition_type_t<partition_subrange<Partition, Index>>&&
     get_partition (const partition_subrange<Partition, Index>&& p) noexcept;
 
-    GCH_CPP14_CONSTEXPR subrange_type<0>& front (void) noexcept
+    GCH_CPP14_CONSTEXPR
+    subrange_type<0>&
+    front (void) noexcept
     {
       return get_subrange<0> (*this);
     }
 
-    constexpr const subrange_type<0>& front (void) const noexcept
+    constexpr
+    const subrange_type<0>&
+    front (void) const noexcept
     {
       return get_subrange<0> (*this);
     }
 
-    GCH_CPP14_CONSTEXPR subrange_type<N - 1>& back (void) noexcept
+    GCH_CPP14_CONSTEXPR
+    subrange_type<N - 1>&
+    back (void) noexcept
     {
       return get_subrange<N - 1> (*this);
     }
 
-    constexpr const subrange_type<N - 1>& back (void) const noexcept
+    constexpr
+    const subrange_type<N - 1>&
+    back (void) const noexcept
     {
       return get_subrange<N - 1> (*this);
     }
@@ -1326,56 +1608,75 @@ namespace gch
     data_ref&   data_back    (void)       noexcept { return m_container.back ();    }
     data_cref&  data_back    (void) const noexcept { return m_container.back ();    }
 
-    data_size_t data_size (void) const noexcept { return m_container.size (); }
-    GCH_NODISCARD bool data_empty (void) const noexcept { return m_container.empty (); }
+    data_size_t
+    data_size (void) const noexcept
+    {
+      return m_container.size ();
+    }
 
-    subrange_view<data_iter> data_view (void)
+    GCH_NODISCARD
+    bool
+    data_empty (void) const noexcept
+    {
+      return m_container.empty ();
+    }
+
+    subrange_view<data_iter>
+    data_view (void)
     {
       return { m_container.begin (), m_container.end () };
     }
 
-    subrange_view<data_citer> data_view (void) const
+    subrange_view<data_citer>
+    data_view (void) const
     {
       return { m_container.begin (), m_container.end () };
     }
 
-    gch::partition_view<list_partition, N> partition_view (void)
+    gch::partition_view<list_partition, N>
+    partition_view (void)
     {
       return gch::partition_view<list_partition, N> (*this);
     }
 
-    gch::partition_view<const list_partition, N> partition_view (void) const
+    gch::partition_view<const list_partition, N>
+    partition_view (void) const
     {
       return gch::partition_view<const list_partition, N> (*this);
     }
 
     template <std::size_t Idx>
-    gch::subrange_view<data_iter> subrange_view (void)
+    gch::subrange_view<data_iter>
+    subrange_view (void)
     {
       return get_subrange<Idx> (*this).view ();
     }
 
     template <std::size_t Idx>
-    gch::subrange_view<data_citer> subrange_view (void) const
+    gch::subrange_view<data_citer>
+    subrange_view (void) const
     {
       return get_subrange<Idx> (*this).view ();
     }
 
     template <std::size_t Index,
               typename = typename std::enable_if<(0 < Index) && (Index < N)>::type>
-    data_iter advance_begin (data_diff_t change)
+    data_iter
+    advance_begin (data_diff_t change)
     {
       return get_subrange<Index> (*this).advance_begin (change);
     }
 
     template <std::size_t Index,
               typename = typename std::enable_if<(Index < N)>::type>
-    data_iter advance_end (data_diff_t change)
+    data_iter
+    advance_end (data_diff_t change)
     {
       return get_subrange<Index> (*this).advance_end (change);
     }
 
-    void swap (list_partition& other)
+    void
+    swap (list_partition& other)
       noexcept (noexcept (std::declval<list_partition&> ().partition_swap (other)))
     {
       first_type::partition_swap (other);
@@ -1404,10 +1705,17 @@ namespace gch
     [[nodiscard]] constexpr auto  rend    (void) const noexcept { return criter (cbegin ()); }
     [[nodiscard]] constexpr auto  crend   (void) const noexcept { return criter (cbegin ()); }
 
-    static constexpr std::size_t size (void) noexcept { return N; }
+    static constexpr
+    std::size_t
+    size (void) noexcept
+    {
+      return N;
+    }
 
     template <typename ...Fs>
-    static constexpr auto overload (Fs&&... fs) noexcept
+    static constexpr
+    auto
+    overload (Fs&&... fs) noexcept
     {
       return partition_overloader<list_partition, Fs...> (std::forward<Fs> (fs)...);
     }
@@ -1416,7 +1724,9 @@ namespace gch
   };
 
   template <typename T, std::size_t N, typename Container>
-  void swap (list_partition<T, N, Container>& lhs, list_partition<T, N, Container>& rhs)
+  inline
+  void
+  swap (list_partition<T, N, Container>& lhs, list_partition<T, N, Container>& rhs)
   {
     lhs.swap (rhs);
   }
@@ -1431,9 +1741,11 @@ namespace gch
 #ifdef GCH_LIB_THREE_WAY_COMPARISON
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  constexpr auto operator<=> (const partition_subrange<list_partition<T, N, C>, I>& lhs,
-                              const partition_subrange<list_partition<T, M, C>, J>& rhs)
-    requires std::three_way_comparable_with<T, T>
+  constexpr
+  auto
+  operator<=> (const partition_subrange<list_partition<T, N, C>, I>& lhs,
+               const partition_subrange<list_partition<T, M, C>, J>& rhs)
+    requires std::three_way_comparable<T>
   {
     return std::lexicographical_compare_three_way (lhs.begin (), lhs.end (),
                                                    rhs.begin (), rhs.end (),
@@ -1441,9 +1753,11 @@ namespace gch
   }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  constexpr auto operator<=> (const partition_subrange<list_partition<T, N, C>, I>& lhs,
-                              const partition_subrange<list_partition<T, M, C>, J>& rhs)
-    requires (! std::three_way_comparable_with<T, T>)
+  constexpr
+  auto
+  operator<=> (const partition_subrange<list_partition<T, N, C>, I>& lhs,
+               const partition_subrange<list_partition<T, M, C>, J>& rhs)
+    requires (! std::three_way_comparable<T>)
   {
     constexpr auto comparison = [](const T& l, const T& r)
                                 {
@@ -1459,36 +1773,46 @@ namespace gch
 #else
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  bool operator!= (const partition_subrange<list_partition<T, N, C>, I>& lhs,
-                   const partition_subrange<list_partition<T, M, C>, J>& rhs)
+  inline
+  bool
+  operator!= (const partition_subrange<list_partition<T, N, C>, I>& lhs,
+              const partition_subrange<list_partition<T, M, C>, J>& rhs)
   {
     return ! (lhs == rhs);
   }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  bool operator< (const partition_subrange<list_partition<T, N, C>, I>& lhs,
-                  const partition_subrange<list_partition<T, M, C>, J>& rhs)
+  inline
+  bool
+  operator< (const partition_subrange<list_partition<T, N, C>, I>& lhs,
+             const partition_subrange<list_partition<T, M, C>, J>& rhs)
   {
     return std::lexicographical_compare (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
   }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  bool operator<= (const partition_subrange<list_partition<T, N, C>, I>& lhs,
-                   const partition_subrange<list_partition<T, M, C>, J>& rhs)
+  inline
+  bool
+  operator<= (const partition_subrange<list_partition<T, N, C>, I>& lhs,
+              const partition_subrange<list_partition<T, M, C>, J>& rhs)
   {
     return ! (lhs > rhs);
   }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  bool operator> (const partition_subrange<list_partition<T, N, C>, I>& lhs,
-                  const partition_subrange<list_partition<T, M, C>, J>& rhs)
+  inline
+  bool
+  operator> (const partition_subrange<list_partition<T, N, C>, I>& lhs,
+             const partition_subrange<list_partition<T, M, C>, J>& rhs)
   {
     return rhs < lhs;
   }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  bool operator>= (const partition_subrange<list_partition<T, N, C>, I>& lhs,
-                   const partition_subrange<list_partition<T, M, C>, J>& rhs)
+  inline
+  bool
+  operator>= (const partition_subrange<list_partition<T, N, C>, I>& lhs,
+              const partition_subrange<list_partition<T, M, C>, J>& rhs)
   {
     return ! (lhs < rhs);
   }
