@@ -1732,10 +1732,25 @@ namespace gch
   }
 
   template <typename T, typename C, std::size_t N, std::size_t I, std::size_t M, std::size_t J>
-  GCH_ALG_CONSTEXPR bool operator== (const partition_subrange<list_partition<T, N, C>, I>& lhs,
-                   const partition_subrange<list_partition<T, M, C>, J>& rhs)
+  GCH_ALG_CONSTEXPR inline
+  bool
+  operator== (const partition_subrange<list_partition<T, N, C>, I>& lhs,
+              const partition_subrange<list_partition<T, M, C>, J>& rhs)
   {
-    return std::equal (lhs.begin (), lhs.end (), rhs.begin (), rhs.end ());
+    using citer = typename partition_subrange<list_partition<T, N, C>, I>::const_iterator;
+
+    citer it_lhs  = lhs.begin ();
+    citer it_rhs  = rhs.begin ();
+
+    citer end_lhs = lhs.end ();
+    citer end_rhs = rhs.end ();
+
+    while (it_lhs != end_lhs && it_rhs != end_rhs && *it_lhs == *it_rhs)
+    {
+      std::advance (it_lhs, 1);
+      std::advance (it_rhs, 1);
+    }
+    return it_lhs == end_lhs && it_rhs == end_rhs;
   }
 
 #ifdef GCH_LIB_THREE_WAY_COMPARISON

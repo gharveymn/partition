@@ -791,7 +791,7 @@ namespace gch
 
     GCH_NODISCARD
     subrange_view
-    prev (iter_diff count = 1)
+    prev (iter_diff count = 1) const
     {
       return next (-count);
     }
@@ -800,6 +800,7 @@ namespace gch
     advance (iter_diff count)
     {
       std::advance (m_first, count);
+      return *this;
     }
 
   private:
