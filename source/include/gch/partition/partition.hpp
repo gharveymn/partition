@@ -96,11 +96,11 @@
 #  endif
 #endif
 
-#ifndef GCH_INLINE_VAR
+#ifndef GCH_INLINE_VARIABLE
 #  if __cpp_inline_variables >= 201606L
-#    define GCH_INLINE_VAR inline
+#    define GCH_INLINE_VARIABLE inline
 #  else
-#    define GCH_INLINE_VAR
+#    define GCH_INLINE_VARIABLE
 #  endif
 #endif
 
@@ -109,17 +109,40 @@ namespace gch
 
   namespace detail
   {
-    template <typename From, typename To>
-    using match_ref_t = typename std::conditional<std::is_lvalue_reference<From>::value,
-                                                  typename std::add_lvalue_reference<To>::type,
-                                                  typename std::conditional<
-                                                    std::is_rvalue_reference<From>::value,
-                                                    typename std::add_rvalue_reference<To>::type,
-                                                    To>::type
-                                                 >::type;
-  }
 
-  GCH_INLINE_VAR constexpr std::size_t base_subrange_index = static_cast<std::size_t> (-1);
+    template <typename T>
+    using remove_cvref_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+    template <typename From, typename To>
+    using match_cv_t
+      = typename std::conditional<std::is_const<From>::value,
+                                  typename std::conditional<
+                                    std::is_volatile<From>::value,
+                                    typename std::add_cv<To>::type,
+                                    typename std::add_const<To>::type>::type,
+                                  typename std::conditional<
+                                    std::is_volatile<From>::value,
+                                    typename std::add_volatile<To>::type,
+                                    To>::type
+                                  >::type;
+
+    template <typename From, typename To>
+    using match_ref_t
+      = typename std::conditional<std::is_lvalue_reference<From>::value,
+                                  typename std::add_lvalue_reference<To>::type,
+                                  typename std::conditional<
+                                    std::is_rvalue_reference<From>::value,
+                                    typename std::add_rvalue_reference<To>::type,
+                                    To>::type
+                                  >::type;
+
+    template <typename From, typename To>
+    using match_cvref_t
+      = match_ref_t<From, match_cv_t<typename std::remove_reference<From>::type, To>>;
+
+  } // namespace detail
+
+  GCH_INLINE_VARIABLE constexpr std::size_t partition_base_index = static_cast<std::size_t> (-1);
 
   template <typename Iterator>
   class subrange_view;
@@ -139,20 +162,23 @@ namespace gch
     using value_type      = T;
     using container_type  = Container;
 
+    using data_value_type              = typename container_type::value_type;
+    using data_allocator_type          = typename container_type::allocator_type;
+    using data_size_type               = typename container_type::size_type;
+    using data_difference_type         = typename container_type::difference_type;
+    using data_reference               = typename container_type::reference;
+    using data_const_reference         = typename container_type::const_reference;
+    using data_pointer                 = typename container_type::pointer;
+    using data_const_pointer           = typename container_type::const_pointer;
+
     using data_iterator                = typename container_type::iterator;
     using data_const_iterator          = typename container_type::const_iterator;
     using data_reverse_iterator        = typename container_type::reverse_iterator;
     using data_const_reverse_iterator  = typename container_type::const_reverse_iterator;
-    using data_reference               = typename container_type::reference;
-    using data_const_reference         = typename container_type::const_reference;
-    using data_size_type               = typename container_type::size_type;
-    using data_difference_type         = typename container_type::difference_type;
-    using data_value_type              = typename container_type::value_type;
-    using data_allocator_type          = typename container_type::allocator_type;
 
     using subrange_view_type = gch::subrange_view<data_iterator>;
 
-    static constexpr std::size_t num_subranges = N;
+    static constexpr std::size_t size = N;
   };
 
   template <template <typename, std::size_t, typename> class PartitionT,
@@ -164,20 +190,23 @@ namespace gch
     using value_type      = T;
     using container_type  = Container;
 
+    using data_value_type              = typename container_type::value_type;
+    using data_allocator_type          = typename container_type::allocator_type;
+    using data_size_type               = typename container_type::size_type;
+    using data_difference_type         = typename container_type::difference_type;
+    using data_reference               = typename container_type::reference;
+    using data_const_reference         = typename container_type::const_reference;
+    using data_pointer                 = typename container_type::pointer;
+    using data_const_pointer           = typename container_type::const_pointer;
+
     using data_iterator                = typename container_type::iterator;
     using data_const_iterator          = typename container_type::const_iterator;
     using data_reverse_iterator        = typename container_type::reverse_iterator;
     using data_const_reverse_iterator  = typename container_type::const_reverse_iterator;
-    using data_reference               = typename container_type::reference;
-    using data_const_reference         = typename container_type::const_reference;
-    using data_size_type               = typename container_type::size_type;
-    using data_difference_type         = typename container_type::difference_type;
-    using data_value_type              = typename container_type::value_type;
-    using data_allocator_type          = typename container_type::allocator_type;
 
     using subrange_view_type = gch::subrange_view<data_const_iterator>;
 
-    static constexpr std::size_t num_subranges = N;
+    static constexpr std::size_t size = N;
   };
 
   template <template <typename, std::size_t, typename> class PartitionT,
@@ -189,20 +218,23 @@ namespace gch
     using value_type      = T;
     using container_type  = Container;
 
+    using data_value_type              = typename container_type::value_type;
+    using data_allocator_type          = typename container_type::allocator_type;
+    using data_size_type               = typename container_type::size_type;
+    using data_difference_type         = typename container_type::difference_type;
+    using data_reference               = typename container_type::reference;
+    using data_const_reference         = typename container_type::const_reference;
+    using data_pointer                 = typename container_type::pointer;
+    using data_const_pointer           = typename container_type::const_pointer;
+
     using data_iterator                = typename container_type::iterator;
     using data_const_iterator          = typename container_type::const_iterator;
     using data_reverse_iterator        = typename container_type::reverse_iterator;
     using data_const_reverse_iterator  = typename container_type::const_reverse_iterator;
-    using data_reference               = typename container_type::reference;
-    using data_const_reference         = typename container_type::const_reference;
-    using data_size_type               = typename container_type::size_type;
-    using data_difference_type         = typename container_type::difference_type;
-    using data_value_type              = typename container_type::value_type;
-    using data_allocator_type          = typename container_type::allocator_type;
 
     using subrange_view_type = gch::subrange_view<data_iterator>;
 
-    static constexpr std::size_t num_subranges = N;
+    static constexpr std::size_t size = N;
   };
 
   template <template <typename, std::size_t, typename> class PartitionT,
@@ -214,21 +246,66 @@ namespace gch
     using value_type      = T;
     using container_type  = Container;
 
+    using data_value_type              = typename container_type::value_type;
+    using data_allocator_type          = typename container_type::allocator_type;
+    using data_size_type               = typename container_type::size_type;
+    using data_difference_type         = typename container_type::difference_type;
+    using data_reference               = typename container_type::reference;
+    using data_const_reference         = typename container_type::const_reference;
+    using data_pointer                 = typename container_type::pointer;
+    using data_const_pointer           = typename container_type::const_pointer;
+
     using data_iterator                = typename container_type::iterator;
     using data_const_iterator          = typename container_type::const_iterator;
     using data_reverse_iterator        = typename container_type::reverse_iterator;
     using data_const_reverse_iterator  = typename container_type::const_reverse_iterator;
-    using data_reference               = typename container_type::reference;
-    using data_const_reference         = typename container_type::const_reference;
-    using data_size_type               = typename container_type::size_type;
-    using data_difference_type         = typename container_type::difference_type;
-    using data_value_type              = typename container_type::value_type;
-    using data_allocator_type          = typename container_type::allocator_type;
 
     using subrange_view_type = gch::subrange_view<data_const_iterator>;
 
-    static constexpr std::size_t num_subranges = N;
+    static constexpr std::size_t size = N;
   };
+
+  namespace detail
+  {
+
+    template <typename ...>
+    using void_t = void;
+
+    template <typename Partition, typename Enable = void>
+    struct is_partition_impl
+      : std::false_type
+    { };
+
+    template <typename Partition>
+    struct is_partition_impl<Partition, void_t<partition_traits<Partition>>>
+      : std::true_type
+    { };
+
+  } // namespace detail
+
+  template <typename Partition>
+  struct is_partition
+    : detail::is_partition_impl<Partition>
+  { };
+
+  template <typename Partition>
+  struct is_partition_ref
+    : is_partition<typename std::remove_reference<Partition>::type>
+  { };
+
+#ifdef GCH_VARIABLE_TEMPLATES
+
+  template <typename Partition>
+  GCH_INLINE_VARIABLE constexpr
+  bool
+  is_partition_v = is_partition<Partition>::value;
+
+  template <typename Partition>
+  GCH_INLINE_VARIABLE constexpr
+  bool
+  is_partition_ref_v = is_partition_ref<Partition>::value;
+
+#endif
 
   template <typename Partition>
   struct partition_value_type
@@ -259,16 +336,18 @@ namespace gch
 
   template <typename Partition>
   struct partition_size
-    : std::integral_constant<std::size_t, partition_traits<Partition>::num_subranges>
+    : std::integral_constant<std::size_t, partition_traits<Partition>::size>
   { };
 
   namespace detail
   {
+
     template <typename T,
-              typename U = typename std::remove_cv<T>::type,
-              typename = typename std::enable_if<std::is_same<T, U>::value>::type,
+              typename U  = typename std::remove_cv<T>::type,
+              typename    = typename std::enable_if<std::is_same<T, U>::value>::type,
               std::size_t = partition_size<T>::value>
     using enable_if_has_partition_size = T;
+
   }
 
   template <typename Partition>
@@ -287,47 +366,85 @@ namespace gch
   { };
 
 #ifdef GCH_VARIABLE_TEMPLATES
+
   template <typename Partition>
-  GCH_INLINE_VAR constexpr std::size_t partition_size_v = partition_size<Partition>::value;
+  GCH_INLINE_VARIABLE constexpr
+  std::size_t
+  partition_size_v = partition_size<Partition>::value;
+
 #endif
-
-  template <std::size_t I, typename Partition>
-  struct partition_element;
-
-  template <std::size_t Index, typename Partition>
-  using partition_element_t = typename partition_element<Index, Partition>::type;
 
   template <std::size_t I, typename Partition>
   struct partition_element
   {
-    using type = partition_subrange<Partition, I>;
+    using type = detail::match_cv_t<
+      Partition,
+      partition_subrange<typename std::remove_cv<Partition>::type, I>>;
   };
-
-  template <std::size_t I, typename Partition>
-  struct partition_element<I, const Partition>
-  {
-    using type = typename std::add_const<partition_element_t<I, Partition>>::type;
-  };
-
-  template <std::size_t I, typename Partition>
-  struct partition_element<I, volatile Partition>
-  {
-    using type = typename std::add_volatile<partition_element_t<I, Partition>>::type;
-  };
-
-  template <std::size_t I, typename Partition>
-  struct partition_element<I, const volatile Partition>
-  {
-    using type = typename std::add_cv<partition_element_t<I, Partition>>::type;
-  };
-
-  template <std::size_t I, typename Partition>
-  struct partition_subrange_type
-    : partition_element<I, Partition>
-  { };
 
   template <std::size_t Index, typename Partition>
-  using partition_subrange_t = typename partition_subrange_type<Index, Partition>::type;
+  using partition_element_t = typename partition_element<Index, Partition>::type;
+
+  namespace detail
+  {
+
+    template <std::size_t I, typename Partition, typename Enable = void>
+    struct has_subrange_impl
+      : std::false_type
+    { };
+
+    template <std::size_t I, typename Partition>
+    struct has_subrange_impl<
+          I,
+          Partition,
+          typename std::enable_if<(I <= partition_traits<Partition>::size)
+                              ||  (I == partition_base_index)>::type>
+      : std::true_type
+    { };
+
+  } // namespace detail
+
+  template <std::size_t I, typename PartitionRef>
+  struct has_subrange
+    : detail::has_subrange_impl<I, typename std::remove_reference<PartitionRef>::type>
+  { };
+
+#ifdef GCH_VARIABLE_TEMPLATES
+
+  template <std::size_t I, typename PartitionRef>
+  GCH_INLINE_VARIABLE constexpr
+  bool
+  has_subrange_v = has_subrange<I, PartitionRef>::value;
+
+#endif
+
+  namespace detail
+  {
+
+    template <std::size_t I, typename PartitionRef, typename Enable = void>
+    struct get_subrange_type_impl
+    { };
+
+    template <std::size_t I, typename PartitionRef>
+    struct get_subrange_type_impl<
+      I,
+      PartitionRef,
+      typename std::enable_if<has_subrange<I, PartitionRef>::value>::type>
+    {
+      using type = detail::match_cvref_t<
+        PartitionRef,
+        partition_subrange<detail::remove_cvref_t<PartitionRef>, I>>;
+    };
+
+  } // namespace detail
+
+  template <std::size_t I, typename PartitionRef>
+  struct get_subrange_type
+    : detail::get_subrange_type_impl<I, PartitionRef>
+  { };
+
+  template <std::size_t Index, typename PartitionRef>
+  using get_subrange_t = typename get_subrange_type<Index, PartitionRef>::type;
 
   template <typename ...Partitions>
   struct total_partition_size;
@@ -345,7 +462,7 @@ namespace gch
 
 #ifdef GCH_VARIABLE_TEMPLATES
   template <typename ...Ps>
-  GCH_INLINE_VAR constexpr std::size_t total_partition_size_v = total_partition_size<Ps...>::value;
+  GCH_INLINE_VARIABLE constexpr std::size_t total_partition_size_v = total_partition_size<Ps...>::value;
 #endif
 
   template <typename Partition, std::size_t M>
@@ -435,7 +552,8 @@ namespace gch
     using value_type             = typename container_type::value_type;
     using allocator_type         = typename container_type::allocator_type;
 
-    static constexpr std::size_t index = Index;
+    static constexpr std::size_t index          = Index;
+    static constexpr std::size_t partition_size = partition_traits<Partition>::size;
   };
 
   template <typename Subrange>
@@ -445,35 +563,61 @@ namespace gch
   };
 
   template <typename Subrange>
-  using partition_type_t = typename partition_type<Subrange>::type;
+  using partition_t = typename partition_type<Subrange>::type;
 
-  template <typename Subrange, std::ptrdiff_t Offset = 1, typename Enable = void>
-  struct next_subrange_type { };
-
-  template <typename Subrange>
-  struct next_subrange_type<Subrange, 0>
+  template <typename SubrangeRef>
+  struct get_partition_type
   {
-    using type = Subrange;
+    using type = detail::match_cvref_t<
+      SubrangeRef,
+      typename subrange_traits<detail::remove_cvref_t<SubrangeRef>>::partition_type>;
   };
 
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset>
-  struct next_subrange_type<partition_subrange<Partition, Index>, Offset,
-    typename std::enable_if<(  (Offset > 0)
-                           &&  (static_cast<std::size_t> (Offset)
-                                  <= (partition_size<Partition>::value - Index)))
-                        ||  (  (Offset < 0)
-                           &&  (static_cast<std::size_t> (-Offset) <= Index))>::type>
-  {
-    using type = partition_element_t<Index + static_cast<std::size_t> (Offset), Partition>;
-  };
+  template <typename SubrangeRef>
+  using get_partition_t = typename get_partition_type<SubrangeRef>::type;
 
-  template <typename Subrange, std::ptrdiff_t Offset = 1>
-  struct prev_subrange_type
-    : next_subrange_type<Subrange, -Offset>
+  namespace detail
+  {
+
+    template <typename PartitionRef, std::size_t Index, std::ptrdiff_t Offset,
+              typename Partition = typename std::remove_reference<PartitionRef>::type,
+              typename Enable    = void>
+    struct next_subrange_type_impl
+    { };
+
+    template <typename PartitionRef, std::size_t Index, std::ptrdiff_t Offset, typename Partition>
+    struct next_subrange_type_impl<PartitionRef, Index, Offset, Partition,
+      typename std::enable_if<
+           (  (Offset > 0)
+          &&  (static_cast<std::size_t> ( Offset) <= (partition_size<Partition>::value - Index)))
+       ||  (  (Offset < 0)
+          &&  (static_cast<std::size_t> (-Offset) <= Index))>::type>
+    {
+      using type = get_subrange_t<Index + static_cast<std::size_t> (Offset), PartitionRef>;
+    };
+
+  } // namespace detail
+
+  template <typename SubrangeRef, std::ptrdiff_t Offset = 1>
+  struct next_subrange_type
+    : detail::next_subrange_type_impl<get_partition_t<SubrangeRef>,
+                                      subrange_traits<detail::remove_cvref_t<SubrangeRef>>::index,
+                                      Offset>
   { };
+
+  template <typename SubrangeRef>
+  struct next_subrange_type<SubrangeRef, 0>
+  {
+    using type = SubrangeRef;
+  };
 
   template <typename Subrange, std::ptrdiff_t Offset = 1>
   using next_subrange_t = typename next_subrange_type<Subrange, Offset>::type;
+
+  template <typename SubrangeRef, std::ptrdiff_t Offset = 1>
+  struct prev_subrange_type
+    : next_subrange_type<SubrangeRef, -Offset>
+  { };
 
   template <typename Subrange, std::ptrdiff_t Offset = 1>
   using prev_subrange_t = typename prev_subrange_type<Subrange, Offset>::type;
@@ -485,223 +629,106 @@ namespace gch
     return { std::forward<Partitions> (ps)... };
   }
 
-  template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-            typename T, std::size_t N, typename Container>
+  template <std::size_t I, typename PartitionRef>
   constexpr
-  partition_element_t<I, PartitionT<T, N, Container>>&
-  get_subrange (PartitionT<T, N, Container>& p) noexcept
+  get_subrange_t<I, PartitionRef>
+  get_subrange (PartitionRef&& p) noexcept
   {
-    return static_cast<partition_element_t<I, PartitionT<T, N, Container>>&> (p);
-  }
-
-  template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-            typename T, std::size_t N, typename Container>
-  constexpr
-  const partition_element_t<I, PartitionT<T, N, Container>>&
-  get_subrange (const PartitionT<T, N, Container>& p) noexcept
-  {
-    return static_cast<const partition_element_t<I, PartitionT<T, N, Container>>&> (p);
-  }
-
-  template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-            typename T, std::size_t N, typename Container>
-  constexpr
-  partition_element_t<I, PartitionT<T, N, Container>>&&
-  get_subrange (PartitionT<T, N, Container>&& p) noexcept
-  {
-    return static_cast<partition_element_t<I, PartitionT<T, N, Container>>&&> (p);
-  }
-
-  template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-            typename T, std::size_t N, typename Container>
-  constexpr
-  const partition_element_t<I, PartitionT<T, N, Container>>&&
-  get_subrange (const PartitionT<T, N, Container>&& p) noexcept
-  {
-    return static_cast<const partition_element_t<I, PartitionT<T, N, Container>>&&> (p);
+    return static_cast<get_subrange_t<I, PartitionRef>> (p);
   }
 
 #ifdef GCH_TEMPLATE_AUTO
 
-  template <auto EnumIndex, typename Partition,
-            std::enable_if_t<std::is_enum_v<decltype (EnumIndex)>
+  template <auto EnumIndex, typename PartitionRef,
+            std::enable_if_t<is_partition_ref_v<PartitionRef>
+                         &&  std::is_enum_v<decltype (EnumIndex)>
                          &&  std::is_convertible_v<std::underlying_type_t<decltype (EnumIndex)>,
-                                                   std::size_t>> * = nullptr>
+                                                   std::size_t>
+                         &&  has_subrange_v<static_cast<std::size_t> (EnumIndex),
+                                            PartitionRef>> * = nullptr>
   constexpr
-  auto
-  get_subrange (Partition&& p) noexcept
-    -> decltype (get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<Partition> (p)))
+  get_subrange_t<static_cast<std::size_t> (EnumIndex), PartitionRef>
+  get_subrange (PartitionRef&& p) noexcept
   {
-    return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<Partition> (p));
+    return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<PartitionRef> (p));
   }
 
-  template <auto Index, typename Partition,
-            std::enable_if_t<! std::is_enum_v<decltype (Index)>
-                           &&! std::is_same_v<decltype (Index), std::size_t>
-                           &&  std::is_convertible_v<decltype (Index), std::size_t>> * = nullptr>
+  template <auto Index, typename PartitionRef,
+            std::enable_if_t<is_partition_ref_v<PartitionRef>
+                         &&! std::is_enum_v<decltype (Index)>
+                         &&! std::is_same_v<decltype (Index), std::size_t>
+                         &&  std::is_convertible_v<decltype (Index), std::size_t>
+                         &&  has_subrange_v<static_cast<std::size_t> (Index),
+                                            PartitionRef>> * = nullptr>
   constexpr
-  auto
-  get_subrange (Partition&& p) noexcept
-    -> decltype (get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p)))
+  get_subrange_t<static_cast<std::size_t> (Index), PartitionRef>
+  get_subrange (PartitionRef&& p) noexcept
   {
-    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p));
+    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<PartitionRef> (p));
   }
 
 #else
 
-  template <typename T, T Index, typename Partition,
-            typename std::enable_if<
-                std::is_enum<T>::value &&
-                std::is_convertible<typename std::underlying_type<T>::type,
-                                    std::size_t>::value>::type * = nullptr>
+  template <typename T, T EnumIndex, typename PartitionRef,
+            typename std::enable_if<is_partition_ref<PartitionRef>::value
+                                &&  std::is_enum<T>::value
+                                &&  std::is_convertible<typename std::underlying_type<T>::type,
+                                                        std::size_t>::value
+                                &&  has_subrange<static_cast<std::size_t> (EnumIndex),
+                                                 PartitionRef>::value>::type * = nullptr>
   constexpr
-  auto
-  get_subrange (Partition&& p) noexcept
-    -> decltype (get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p)))
+  get_subrange_t<static_cast<std::size_t> (EnumIndex), PartitionRef>
+  get_subrange (PartitionRef&& p) noexcept
   {
-    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p));
+    return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<PartitionRef> (p));
   }
 
-  template <typename T, T Index, typename Partition,
-    typename std::enable_if<! std::is_enum<T>::value &&
-                            ! std::is_same<T, std::size_t>::value &&
-                            std::is_convertible<T, std::size_t>::value>::type * = nullptr>
+  template <typename T, T Index, typename PartitionRef,
+            typename std::enable_if<is_partition_ref<PartitionRef>::value
+                                &&! std::is_enum<T>::value
+                                &&! std::is_same<T, std::size_t>::value
+                                &&  std::is_convertible<T, std::size_t>::value
+                                &&  has_subrange<static_cast<std::size_t> (Index),
+                                                 PartitionRef>::value>::type * = nullptr>
   constexpr
-  auto
-  get_subrange (Partition&& p) noexcept
-    -> decltype (get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p)))
+  get_subrange_t<static_cast<std::size_t> (Index), PartitionRef>
+  get_subrange (PartitionRef&& p) noexcept
   {
-    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<Partition> (p));
+    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<PartitionRef> (p));
   }
 
 #endif
 
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
+  template <typename SubrangeRef, std::ptrdiff_t Offset = 1>
   constexpr
-  next_subrange_t<partition_subrange<Partition, Index>, Offset>&
-  next_subrange (partition_subrange<Partition, Index>& s) noexcept
+  next_subrange_t<SubrangeRef, Offset>
+  next_subrange (SubrangeRef&& s) noexcept
   {
-    return static_cast<next_subrange_t<partition_subrange<Partition, Index>, Offset>&> (s);
+    return static_cast<next_subrange_t<SubrangeRef, Offset>> (s);
   }
 
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
+  template <typename SubrangeRef, std::ptrdiff_t Offset = 1>
   constexpr
-  const next_subrange_t<partition_subrange<Partition, Index>, Offset>&
-  next_subrange (const partition_subrange<Partition, Index>& s) noexcept
+  prev_subrange_t<SubrangeRef, Offset>
+  prev_subrange (SubrangeRef&& s) noexcept
   {
-    return static_cast<const next_subrange_t<partition_subrange<Partition, Index>, Offset>&> (s);
+    return static_cast<prev_subrange_t<SubrangeRef, Offset>> (s);
   }
 
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
+  template <typename SubrangeRef>
   constexpr
-  next_subrange_t<partition_subrange<Partition, Index>, Offset>&&
-  next_subrange (partition_subrange<Partition, Index>&& s) noexcept
+  get_partition_t<SubrangeRef>
+  get_partition (SubrangeRef&& s) noexcept
   {
-    return static_cast<next_subrange_t<partition_subrange<Partition, Index>, Offset>&&> (s);
+    return static_cast<get_partition_t<SubrangeRef>> (s);
   }
 
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
+  template <typename SubrangeRef>
   constexpr
-  const next_subrange_t<partition_subrange<Partition, Index>, Offset>&&
-  next_subrange (const partition_subrange<Partition, Index>&& s) noexcept
+  get_subrange_t<partition_base_index, get_partition_t<SubrangeRef>>
+  get_base (SubrangeRef&& s) noexcept
   {
-    return static_cast<const next_subrange_t<partition_subrange<Partition, Index>, Offset>&&> (s);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr
-  prev_subrange_t<partition_subrange<Partition, Index>, Offset>&
-  prev_subrange (partition_subrange<Partition, Index>& s) noexcept
-  {
-    return static_cast<prev_subrange_t<partition_subrange<Partition, Index>, Offset>&> (s);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr
-  const prev_subrange_t<partition_subrange<Partition, Index>, Offset>&
-  prev_subrange (const partition_subrange<Partition, Index>& s) noexcept
-  {
-    return static_cast<const prev_subrange_t<partition_subrange<Partition, Index>, Offset>&> (s);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr
-  prev_subrange_t<partition_subrange<Partition, Index>, Offset>&&
-  prev_subrange (partition_subrange<Partition, Index>&& s) noexcept
-  {
-    return static_cast<prev_subrange_t<partition_subrange<Partition, Index>, Offset>&&> (s);
-  }
-
-  template <typename Partition, std::size_t Index, std::ptrdiff_t Offset = 1>
-  constexpr
-  const prev_subrange_t<partition_subrange<Partition, Index>, Offset>&&
-  prev_subrange (const partition_subrange<Partition, Index>&& s) noexcept
-  {
-    return static_cast<const prev_subrange_t<partition_subrange<Partition, Index>, Offset>&&> (s);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr
-  partition_type_t<partition_subrange<Partition, Index>>&
-  get_partition (partition_subrange<Partition, Index>& s) noexcept
-  {
-    return static_cast<partition_type_t<partition_subrange<Partition, Index>>&> (s);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr
-  const partition_type_t<partition_subrange<Partition, Index>>&
-  get_partition (const partition_subrange<Partition, Index>& s) noexcept
-  {
-    return static_cast<const partition_type_t<partition_subrange<Partition, Index>>&> (s);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr
-  partition_type_t<partition_subrange<Partition, Index>>&&
-  get_partition (partition_subrange<Partition, Index>&& s) noexcept
-  {
-    return static_cast<partition_type_t<partition_subrange<Partition, Index>>&&> (s);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr
-  const partition_type_t<partition_subrange<Partition, Index>>&&
-  get_partition (const partition_subrange<Partition, Index>&& s) noexcept
-  {
-    return static_cast<const partition_type_t<partition_subrange<Partition, Index>>&&> (s);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr
-  partition_subrange<Partition, base_subrange_index>&
-  get_base (partition_subrange<Partition, Index>& s) noexcept
-  {
-    return static_cast<partition_subrange<Partition, base_subrange_index>&> (s);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr
-  const partition_subrange<Partition, base_subrange_index>&
-  get_base (const partition_subrange<Partition, Index>& s) noexcept
-  {
-    return static_cast<const partition_subrange<Partition, base_subrange_index>&> (s);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr
-  partition_subrange<Partition, base_subrange_index>&&
-  get_base (partition_subrange<Partition, Index>&& s) noexcept
-  {
-    return static_cast<partition_subrange<Partition, base_subrange_index>&&> (s);
-  }
-
-  template <typename Partition, std::size_t Index>
-  constexpr
-  const partition_subrange<Partition, base_subrange_index>&&
-  get_base (const partition_subrange<Partition, Index>&& s) noexcept
-  {
-    return static_cast<const partition_subrange<Partition, base_subrange_index>&&> (s);
+    return static_cast<get_subrange_t<partition_base_index, get_partition_t<SubrangeRef>>> (s);
   }
 
   template <typename Iterator>

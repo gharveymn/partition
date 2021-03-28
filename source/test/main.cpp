@@ -1077,7 +1077,7 @@ enum key5
 
 enum class key6 : std::size_t
 {
-  all    = base_subrange_index,
+  all    = partition_base_index,
   first  = 0,
   second = 1,
 };

@@ -368,20 +368,20 @@ namespace gch
     template <std::size_t M, std::size_t J>
     void
     splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
-                 citer it)
+            citer cit)
     {
-      iter new_other_front = std::next (it);
-      m_container.splice (pos, std::move (other.m_container), it);
-      other.propagate_first_left (it, new_other_front);
+      citer new_other_front = std::next (cit);
+      m_container.splice (pos, std::move (other.m_container), cit);
+      other.propagate_first_left (cit, get_iter (new_other_front));
     }
 
     template <std::size_t M, std::size_t J>
     void
     splice (citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
-                 citer first, citer last)
+            citer first, citer last)
     {
       m_container.splice (pos, std::move (other.m_container), first, last);
-      other.propagate_first_left (first, last);
+      other.propagate_first_left (first, get_iter (last));
     }
 
     size_t
@@ -596,7 +596,7 @@ namespace gch
       typename std::enable_if<(J < M)>::type * = nullptr>
     constexpr
     partition_subrange (const partition_subrange<list_partition<T, M, Container>, J>& other,
-                             Subranges&&... subranges)
+                        Subranges&&... subranges)
       : next_type (next_subrange (other), std::forward<Subranges> (subranges)...),
         m_first (std::next (m_container.begin (),
                             std::distance (other.m_container.begin (), other.begin ())))
@@ -953,22 +953,22 @@ namespace gch
     template <std::size_t M, std::size_t J>
     void
     splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
-                 const citer cit)
+            const citer cit)
     {
       citer new_other_front = std::next (cit);
       m_container.splice (pos, std::move (other.m_container), cit);
-      other.propagate_first_left (cit, new_other_front);
-      propagate_first_left (pos, cit);
+      other.propagate_first_left (cit, get_iter (new_other_front));
+      propagate_first_left (pos, get_iter (cit));
     }
 
     template <std::size_t M, std::size_t J>
     void
     splice (const citer pos, partition_subrange<list_partition<T, M, Container>, J>&& other,
-                 const citer first, const citer last)
+            const citer first, const citer last)
     {
       m_container.splice (pos, std::move (other.m_container), first, last);
-      other.propagate_first_left (first, last);
-      propagate_first_left (pos, first);
+      other.propagate_first_left (first, get_iter (last));
+      propagate_first_left (pos, get_iter (first));
     }
 
     size_t
@@ -1092,6 +1092,12 @@ namespace gch
     }
 
   private:
+    iter
+    get_iter (citer cit)
+    {
+      return m_container.erase (cit, cit);
+    }
+
     void
     set_first (iter replace)
     {
@@ -1138,9 +1144,9 @@ namespace gch
 
   template <typename T, std::size_t N, typename Container>
   class partition_subrange<list_partition<T, N, Container>, N>
-    : public partition_subrange<list_partition<T, N, Container>, base_subrange_index>
+    : public partition_subrange<list_partition<T, N, Container>, partition_base_index>
   {
-    using base = partition_subrange<list_partition<T, N, Container>, base_subrange_index>;
+    using base = partition_subrange<list_partition<T, N, Container>, partition_base_index>;
 
     template <typename, std::size_t, typename>
     friend class partition_subrange;
@@ -1275,14 +1281,14 @@ namespace gch
 
   // holds the container
   template <typename T, std::size_t N, typename Container>
-  class partition_subrange<list_partition<T, N, Container>, base_subrange_index>
+  class partition_subrange<list_partition<T, N, Container>, partition_base_index>
   {
     template <typename, std::size_t, typename>
     friend class partition_subrange;
 
   public:
     using partition_type = list_partition<T, N, Container>;
-    using subrange_type  = partition_subrange<partition_type, base_subrange_index>;
+    using subrange_type  = partition_subrange<partition_type, partition_base_index>;
 //  using prev_type      = void;
 //  using next_type      = void;
 
@@ -1320,13 +1326,13 @@ namespace gch
 
     template <std::size_t M>
     partition_subrange (const partition_subrange<list_partition<T, M, Container>,
-                                                 base_subrange_index>& other)
+                                                 partition_base_index>& other)
       : m_container (other.m_container)
     { }
 
     template <std::size_t M>
     partition_subrange (partition_subrange<list_partition<T, M, Container>,
-                                           base_subrange_index>&& other)
+                                           partition_base_index>&& other)
       : m_container (std::move (other.m_container))
     { }
 
@@ -1514,49 +1520,15 @@ namespace gch
       : first_type (alloc)
     { }
 
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
+    template <std::size_t I, typename PartitionRef>
     friend constexpr
-    partition_element_t<I, PartitionT<U, M, C>>&
-    get_subrange (PartitionT<U, M, C>& p) noexcept;
+    get_subrange_t<I, PartitionRef>
+    get_subrange (PartitionRef&& p) noexcept;
 
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
+    template <typename SubrangeRef>
     friend constexpr
-    const partition_element_t<I, PartitionT<U, M, C>>&
-    get_subrange (const PartitionT<U, M, C>& p) noexcept;
-
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr
-    partition_element_t<I, PartitionT<U, M, C>>&&
-    get_subrange (PartitionT<U, M, C>&& p) noexcept;
-
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr
-    const partition_element_t<I, PartitionT<U, M, C>>&&
-    get_subrange (const PartitionT<U, M, C>&& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr
-    partition_type_t<partition_subrange<Partition, Index>>&
-    get_partition (partition_subrange<Partition, Index>& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr
-    const partition_type_t<partition_subrange<Partition, Index>>&
-    get_partition (const partition_subrange<Partition, Index>& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr
-    partition_type_t<partition_subrange<Partition, Index>>&&
-    get_partition (partition_subrange<Partition, Index>&& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr
-    const partition_type_t<partition_subrange<Partition, Index>>&&
-    get_partition (const partition_subrange<Partition, Index>&& p) noexcept;
+    get_partition_t<SubrangeRef>
+    get_partition (SubrangeRef&& s) noexcept;
 
     GCH_CPP14_CONSTEXPR
     subrange_type<0>&
@@ -1833,6 +1805,15 @@ namespace gch
   }
 
 #endif
+
+  template <typename Container, std::size_t N>
+  struct as_list_partition
+  {
+    using type = list_partition<typename Container::value_type, N, Container>;
+  };
+
+  template <typename Container, std::size_t N>
+  using as_list_partition_t = typename as_list_partition<Container, N>::type;
 
 }
 

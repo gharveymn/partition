@@ -977,41 +977,15 @@ namespace gch
       : first_type (alloc)
     { }
 
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr partition_element_t<I, PartitionT<U, M, C>>&
-    get_subrange (PartitionT<U, M, C>& p) noexcept;
+    template <std::size_t I, typename PartitionRef>
+    friend constexpr
+    get_subrange_t<I, PartitionRef>
+    get_subrange (PartitionRef&& p) noexcept;
 
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr const partition_element_t<I, PartitionT<U, M, C>>&
-    get_subrange (const PartitionT<U, M, C>& p) noexcept;
-
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr partition_element_t<I, PartitionT<U, M, C>>&&
-    get_subrange (PartitionT<U, M, C>&& p) noexcept;
-
-    template <std::size_t I, template <typename, std::size_t, typename> class PartitionT,
-              typename U, std::size_t M, typename C>
-    friend constexpr const partition_element_t<I, PartitionT<U, M, C>>&&
-    get_subrange (const PartitionT<U, M, C>&& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr partition_type_t<partition_subrange<Partition, Index>>&
-    get_partition (partition_subrange<Partition, Index>& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr const partition_type_t<partition_subrange<Partition, Index>>&
-    get_partition (const partition_subrange<Partition, Index>& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr partition_type_t<partition_subrange<Partition, Index>>&&
-    get_partition (partition_subrange<Partition, Index>&& p) noexcept;
-
-    template <typename Partition, std::size_t Index>
-    friend constexpr const partition_type_t<partition_subrange<Partition, Index>>&&
-    get_partition (const partition_subrange<Partition, Index>&& p) noexcept;
+    template <typename SubrangeRef>
+    friend constexpr
+    get_partition_t<SubrangeRef>
+    get_partition (SubrangeRef&& s) noexcept;
 
     GCH_CPP14_CONSTEXPR subrange_type<0> front (void) noexcept
     {
@@ -1061,53 +1035,62 @@ namespace gch
     data_size_t data_size (void) const noexcept { return m_container.size (); }
     GCH_NODISCARD bool data_empty (void) const noexcept { return m_container.empty (); }
 
-    gch::subrange_view<data_iter> data_view (void)
+    gch::subrange_view<data_iter>
+    data_view (void)
     {
       return { m_container.begin (), m_container.end () };
     }
 
-    gch::subrange_view<data_citer> data_view (void) const
+    gch::subrange_view<data_citer>
+    data_view (void) const
     {
       return { m_container.begin (), m_container.end () };
     }
 
-    gch::partition_view<vector_partition, N> partition_view (void)
+    gch::partition_view<vector_partition, N>
+    partition_view (void)
     {
       return gch::partition_view<vector_partition, N> (*this);
     }
 
-    gch::partition_view<const vector_partition, N> partition_view (void) const
+    gch::partition_view<const vector_partition, N>
+    partition_view (void) const
     {
       return gch::partition_view<const vector_partition, N> (*this);
     }
 
     template <std::size_t Idx>
-    gch::subrange_view<data_iter> subrange_view (void)
+    gch::subrange_view<data_iter>
+    subrange_view (void)
     {
       return get_subrange<Idx> (*this).view ();
     }
 
     template <std::size_t Idx>
-    gch::subrange_view<data_citer> subrange_view (void) const
+    gch::subrange_view<data_citer>
+    subrange_view (void) const
     {
       return get_subrange<Idx> (*this).view ();
     }
 
     template <std::size_t Index,
               typename = typename std::enable_if<(0 < Index) && (Index < N)>::type>
-    data_iter advance_begin (data_diff_t change)
+    data_iter
+    advance_begin (data_diff_t change)
     {
       return get_subrange<Index> (*this).advance_begin (change);
     }
 
     template <std::size_t Index,
               typename = typename std::enable_if<(Index < N)>::type>
-    data_iter advance_end (data_diff_t change)
+    data_iter
+    advance_end (data_diff_t change)
     {
       return get_subrange<Index> (*this).advance_end (change);
     }
 
-    void swap (vector_partition& other)
+    void
+    swap (vector_partition& other)
       noexcept (noexcept (std::declval<vector_partition&> ().partition_swap (other)))
     {
       first_type::partition_swap (other);
