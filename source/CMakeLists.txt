@@ -1,24 +1,73 @@
-IF(NOT CREATE_PACKAGE_VERSION VERSION_GREATER_EQUAL 0.0.4)
-  IF(NOT EXISTS "${PROJECT_SOURCE_DIR}/external/create-package/cmake/create-package.cmake")
-    MESSAGE(STATUS "Initializing create-package-0.0.4 in git submodule.")
-    EXECUTE_PROCESS(COMMAND git submodule --quiet update --init -- "${PROJECT_SOURCE_DIR}/external/create-package"
-                    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
-  ENDIF()
-  INCLUDE("${PROJECT_SOURCE_DIR}/external/create-package/cmake/create-package.cmake")
-ENDIF()
+add_library (partition INTERFACE)
 
-CREATE_PACKAGE(AUTHOR         gharveymn
-               NAMESPACE      gch
-               NAME           partition
-               HEADERS        partition.hpp
-                              dependent_partition.hpp
-                              list_partition.hpp
-                              vector_partition.hpp)
+target_sources (
+  partition
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/partition/dependent_partition.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/partition/list_partition.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/partition/partition.hpp>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/gch/partition/vector_partition.hpp>
+)
 
-# Only include tests if we are at the top level
-IF(PARTITION_BUILD_TESTS)
-  MESSAGE(STATUS "Testing is enabled.")
-  ADD_SUBDIRECTORY(test)
-ELSE()
-  MESSAGE(STATUS "Testing is disabled.")
-ENDIF()
+target_include_directories (
+  partition
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+)
+
+target_include_directories (
+  partition
+  SYSTEM INTERFACE
+    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
+)
+
+add_library (gch::partition ALIAS partition)
+
+install (
+  TARGETS
+    partition
+  EXPORT
+    partition-targets
+)
+
+install (
+  DIRECTORY
+    include/gch
+  DESTINATION
+    include
+)
+
+file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/partition-config.cmake [=[
+get_filename_component (PACKAGE_PREFIX_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
+include (CMakeFindDependencyMacro)
+find_dependency (plf_list)
+include ("${CMAKE_CURRENT_LIST_DIR}/partition-targets.cmake")
+]=])
+
+include (CMakePackageConfigHelpers)
+write_basic_package_version_file (
+  partition-version.cmake
+  COMPATIBILITY
+    SameMinorVersion
+)
+
+install (
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/partition-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/partition-version.cmake
+  DESTINATION
+    lib/cmake/partition
+)
+
+install (
+  EXPORT
+    partition-targets
+  DESTINATION
+    lib/cmake/partition
+  NAMESPACE
+    gch::
+)
+
+if (GCH_PARTITION_BUILD_TESTS)
+  add_subdirectory (test)
+endif ()
