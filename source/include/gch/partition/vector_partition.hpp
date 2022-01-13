@@ -16,6 +16,15 @@
 #include <stdexcept>
 #include <vector>
 
+#ifndef GCH_CPP17_ALLOC_CONSTRUCT_NOEXCEPT
+#  if defined (__cpp_lib_allocator_traits_is_always_equal) \
+      && __cpp_lib_allocator_traits_is_always_equal >= 201411L
+#    define GCH_CPP17_ALLOC_CONSTRUCT_NOEXCEPT noexcept
+#  else
+#    define GCH_CPP17_ALLOC_CONSTRUCT_NOEXCEPT
+#  endif
+#endif
+
 namespace gch
 {
 
@@ -775,7 +784,6 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     partition_subrange (size_t accum,
                         const partition_subrange<vector_partition<T, M, Container>, M>& other)
-          GCH_CPP17_NOEXCEPT
       : m_container { }
     {
       m_container.reserve (accum + other.m_container.size ());
@@ -785,13 +793,14 @@ namespace gch
     GCH_CPP20_CONSTEXPR
     partition_subrange (size_t accum,
                         partition_subrange<vector_partition<T, M, Container>, M>&& other)
-          GCH_CPP17_NOEXCEPT
       : m_container { }
     {
       m_container.reserve (accum + other.m_container.size ());
     }
 
-    GCH_CPP20_CONSTEXPR explicit partition_subrange (const alloc_t& alloc) GCH_CPP17_NOEXCEPT
+    GCH_CPP20_CONSTEXPR explicit
+    partition_subrange (const alloc_t& alloc)
+    GCH_CPP17_ALLOC_CONSTRUCT_NOEXCEPT
       : m_container (alloc)
     { }
 

@@ -10,73 +10,99 @@
 #ifndef GCH_PARTITION_PARTITION_HPP
 #define GCH_PARTITION_PARTITION_HPP
 
-#include <array>
-#include <functional>
-
-#if __has_include(<variant>)
-#  include <variant>
-#  if __cpp_lib_variant >= 201606L
-#    ifndef GCH_HAS_VARIANT
-#      define GCH_HAS_VARIANT
+#ifdef __clang__
+#  if defined (__cplusplus) && __cplusplus >= 201703L
+#    ifndef GCH_CLANG_17
+#      define GCH_CLANG_17
 #    endif
 #  endif
 #endif
 
-#ifndef GCH_CPP14_CONSTEXPR
-#  if __cpp_constexpr >= 201304L
-#    define GCH_CPP14_CONSTEXPR constexpr
-#  else
-#    define GCH_CPP14_CONSTEXPR
+#ifdef __cpp_constexpr
+#  ifndef GCH_CPP14_CONSTEXPR
+#    if __cpp_constexpr >= 201304L
+#      define GCH_CPP14_CONSTEXPR constexpr
+#      ifndef GCH_HAS_CPP14_CONSTEXPR
+#        define GCH_HAS_CPP14_CONSTEXPR
+#      endif
+#    else
+#      define GCH_CPP14_CONSTEXPR
+#    endif
+#  endif
+#  ifndef GCH_CPP17_CONSTEXPR
+#    if __cpp_constexpr >= 201603L
+#      define GCH_CPP17_CONSTEXPR constexpr
+#      ifndef GCH_HAS_CPP17_CONSTEXPR
+#        define GCH_HAS_CPP17_CONSTEXPR
+#      endif
+#    else
+#      define GCH_CPP17_CONSTEXPR
+#    endif
+#  endif
+#  ifndef GCH_CPP20_CONSTEXPR
+#    if __cpp_constexpr >= 201907L
+#      define GCH_CPP20_CONSTEXPR constexpr
+#      ifndef GCH_HAS_CPP20_CONSTEXPR
+#        define GCH_HAS_CPP20_CONSTEXPR
+#      endif
+#    else
+#      define GCH_CPP20_CONSTEXPR
+#    endif
 #  endif
 #endif
 
-#ifndef GCH_CPP17_CONSTEXPR
-#  if __cpp_constexpr >= 201603L
-#    define GCH_CPP17_CONSTEXPR constexpr
+#ifndef GCH_NODISCARD
+#  if defined (__has_cpp_attribute) && __has_cpp_attribute (nodiscard) >= 201603L
+#    if ! defined (__clang__) || defined (GCH_CLANG_17)
+#      define GCH_NODISCARD [[nodiscard]]
+#    else
+#      define GCH_NODISCARD
+#    endif
 #  else
-#    define GCH_CPP17_CONSTEXPR
+#    define GCH_NODISCARD
 #  endif
 #endif
 
-#ifndef GCH_CPP20_CONSTEXPR
-#  if __cpp_constexpr >= 201907L
-#    define GCH_CPP20_CONSTEXPR constexpr
-#  else
-#    define GCH_CPP20_CONSTEXPR
+#if defined (__cpp_nontype_template_parameter_auto) \
+    && __cpp_nontype_template_parameter_auto >= 201606L
+#  ifndef GCH_TEMPLATE_AUTO
+#    define GCH_TEMPLATE_AUTO
 #  endif
 #endif
+
+#if defined (__cpp_variable_templates) && __cpp_variable_templates >= 201304L
+#  ifndef GCH_VARIABLE_TEMPLATES
+#    define GCH_VARIABLE_TEMPLATES
+#  endif
+#endif
+
+#ifndef GCH_INLINE_VARIABLE
+#  if defined (__cpp_inline_variables) && __cpp_inline_variables >= 201606L
+#    define GCH_INLINE_VARIABLE inline
+#  else
+#    define GCH_INLINE_VARIABLE
+#  endif
+#endif
+
+#include <algorithm>
+#include <array>
+#include <functional>
 
 #ifndef GCH_ALG_CONSTEXPR
-#  if __cpp_lib_constexpr_algorithms >= 201806L
+#  if defined (__cpp_lib_constexpr_algorithms) && __cpp_lib_constexpr_algorithms >= 201806L
 #  define GCH_ALG_CONSTEXPR constexpr
 #  else
 #  define GCH_ALG_CONSTEXPR
 #  endif
 #endif
 
-#ifndef GCH_CPP17_NOEXCEPT
-#  if __cpp_constexpr >= 201603L
-#    define GCH_CPP17_NOEXCEPT noexcept
-#  else
-#    define GCH_CPP17_NOEXCEPT
-#  endif
-#endif
-
-#ifndef GCH_NODISCARD
-#  if __has_cpp_attribute(nodiscard) >= 201603L
-#    define GCH_NODISCARD [[nodiscard]]
-#  else
-#    define GCH_NODISCARD
-#  endif
-#endif
-
-#if __cpp_impl_three_way_comparison >= 201907L
+#if defined (__cpp_impl_three_way_comparison) && __cpp_impl_three_way_comparison >= 201907L
 #  ifndef GCH_IMPL_THREE_WAY_COMPARISON
 #    define GCH_IMPL_THREE_WAY_COMPARISON
 #  endif
-#  if __has_include(<compare>)
+#  if defined (__has_include) && __has_include (<compare>)
 #    include <compare>
-#    if __cpp_lib_three_way_comparison >= 201907L
+#    if defined (__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
 #      ifndef GCH_LIB_THREE_WAY_COMPARISON
 #        define GCH_LIB_THREE_WAY_COMPARISON
 #      endif
@@ -84,23 +110,12 @@
 #  endif
 #endif
 
-#ifndef GCH_TEMPLATE_AUTO
-#  if __cpp_nontype_template_parameter_auto >= 201606L
-#    define GCH_TEMPLATE_AUTO
-#  endif
-#endif
-
-#ifndef GCH_VARIABLE_TEMPLATES
-#  if __cpp_variable_templates >= 201304L
-#  define GCH_VARIABLE_TEMPLATES
-#  endif
-#endif
-
-#ifndef GCH_INLINE_VARIABLE
-#  if __cpp_inline_variables >= 201606L
-#    define GCH_INLINE_VARIABLE inline
-#  else
-#    define GCH_INLINE_VARIABLE
+#if defined (__has_include) && __has_include(<variant>)
+#  include <variant>
+#  if defined (__cpp_lib_variant) && __cpp_lib_variant >= 201606L
+#    ifndef GCH_HAS_VARIANT
+#      define GCH_HAS_VARIANT
+#    endif
 #  endif
 #endif
 

@@ -709,7 +709,7 @@ namespace gch
     std::size_t
     size (void) const noexcept
     {
-      return std::distance (cbegin (), cend ());
+      return static_cast<std::size_t> (std::distance (cbegin (), cend ()));
     }
 
     GCH_NODISCARD
@@ -1254,7 +1254,6 @@ namespace gch
     template <typename U>
     struct is_nothrow_swappable
     {
-    private:
       static constexpr
       bool
       test (void)
@@ -1263,7 +1262,6 @@ namespace gch
         return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
       }
 
-    public:
       static constexpr bool value = test ();
     };
 
@@ -1402,7 +1400,6 @@ namespace gch
     template <typename U>
     struct is_nothrow_swappable
     {
-    private:
       static constexpr
       bool
       test (void)
@@ -1411,7 +1408,6 @@ namespace gch
         return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
       }
 
-    public:
       static constexpr bool value = test ();
     };
 
