@@ -21,6 +21,14 @@ namespace gch
   template <typename T, std::size_t N, typename Container = std::list<T>>
   class list_partition;
 
+  template <typename T, std::size_t N, typename Container, std::size_t Index>
+  class partition_subrange<list_partition<T, N, Container>, Index,
+    typename std::enable_if<! (0 <= Index || Index <= N || Index == partition_base_index)>::type>
+  {
+    static_assert (0 <= Index || Index <= N || Index == partition_base_index,
+                   "Invalid partition subrange index.");
+  };
+
   template <typename T, std::size_t N, typename Container>
   class partition_subrange<list_partition<T, N, Container>, 0>
     : public partition_subrange<list_partition<T, N, Container>, 1>
@@ -807,7 +815,7 @@ namespace gch
     ref
     emplace_back (Args&&... args)
     {
-      return *emplace (cend (), std::forward<Args> (args)...);;
+      return *emplace (cend (), std::forward<Args> (args)...);
     }
 
     void
