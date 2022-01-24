@@ -1598,39 +1598,39 @@ namespace gch
     }
 
     subrange_view<data_iter>
-    data_view (void)
+    get_data_view (void)
     {
       return { m_container.begin (), m_container.end () };
     }
 
     subrange_view<data_citer>
-    data_view (void) const
+    get_data_view (void) const
     {
       return { m_container.begin (), m_container.end () };
     }
 
     gch::partition_view<list_partition, N>
-    partition_view (void)
+    get_partition_view (void)
     {
       return gch::partition_view<list_partition, N> (*this);
     }
 
     gch::partition_view<const list_partition, N>
-    partition_view (void) const
+    get_partition_view (void) const
     {
       return gch::partition_view<const list_partition, N> (*this);
     }
 
     template <std::size_t Idx>
     gch::subrange_view<data_iter>
-    subrange_view (void)
+    get_subrange_view (void)
     {
       return get_subrange<Idx> (*this).view ();
     }
 
     template <std::size_t Idx>
     gch::subrange_view<data_citer>
-    subrange_view (void) const
+    get_subrange_view (void) const
     {
       return get_subrange<Idx> (*this).view ();
     }
