@@ -18,36 +18,36 @@
 #  endif
 #endif
 
-#ifdef __cpp_constexpr
-#  ifndef GCH_CPP14_CONSTEXPR
-#    if __cpp_constexpr >= 201304L
-#      define GCH_CPP14_CONSTEXPR constexpr
-#      ifndef GCH_HAS_CPP14_CONSTEXPR
-#        define GCH_HAS_CPP14_CONSTEXPR
-#      endif
-#    else
-#      define GCH_CPP14_CONSTEXPR
+#ifndef GCH_CPP14_CONSTEXPR
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201304L
+#    define GCH_CPP14_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP14_CONSTEXPR
+#      define GCH_HAS_CPP14_CONSTEXPR
 #    endif
+#  else
+#    define GCH_CPP14_CONSTEXPR
 #  endif
-#  ifndef GCH_CPP17_CONSTEXPR
-#    if __cpp_constexpr >= 201603L
-#      define GCH_CPP17_CONSTEXPR constexpr
-#      ifndef GCH_HAS_CPP17_CONSTEXPR
-#        define GCH_HAS_CPP17_CONSTEXPR
-#      endif
-#    else
-#      define GCH_CPP17_CONSTEXPR
+#endif
+
+#ifndef GCH_CPP17_CONSTEXPR
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201603L
+#    define GCH_CPP17_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP17_CONSTEXPR
+#      define GCH_HAS_CPP17_CONSTEXPR
 #    endif
+#  else
+#    define GCH_CPP17_CONSTEXPR
 #  endif
-#  ifndef GCH_CPP20_CONSTEXPR
-#    if __cpp_constexpr >= 201907L
-#      define GCH_CPP20_CONSTEXPR constexpr
-#      ifndef GCH_HAS_CPP20_CONSTEXPR
-#        define GCH_HAS_CPP20_CONSTEXPR
-#      endif
-#    else
-#      define GCH_CPP20_CONSTEXPR
+#endif
+
+#ifndef GCH_CPP20_CONSTEXPR
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201907L
+#    define GCH_CPP20_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP20_CONSTEXPR
+#      define GCH_HAS_CPP20_CONSTEXPR
 #    endif
+#  else
+#    define GCH_CPP20_CONSTEXPR
 #  endif
 #endif
 
