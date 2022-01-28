@@ -21,7 +21,7 @@
 #include <chrono>
 #include <forward_list>
 
-#if __cpp_concepts >= 201907L
+#if defined (__cpp_concepts) && __cpp_concepts >= 201907L
 #  ifndef GCH_CONCEPTS
 #    define GCH_CONCEPTS
 #  endif
@@ -324,18 +324,18 @@ public:
 
   // test_subrange1 (void)
   //   : m_pivot (m_data.end ()),
-  //     m_phi_range  ([this] (void) -> iter  { return begin (); },
-  //                   [this] (void) -> iter  { return get_pivot (); }),
-  //     m_body_range ([this] (void) -> iter  { return get_pivot (); },
-  //                   [this] (void) -> iter  { return end (); })
+  //     m_phi_range  ([this](void) noexcept -> iter { return begin (); },
+  //                   [this](void) noexcept -> iter { return get_pivot (); }),
+  //     m_body_range ([this](void) noexcept -> iter { return get_pivot (); },
+  //                   [this](void) noexcept -> iter { return end (); })
   // { }
 
   test_subrange (void)
     : m_pivot (m_data.end ()),
-      m_phi_range  ([this] (void) -> iter  { return begin (); },
-                    [this] (void) -> iter  { return get_pivot (); }),
-      m_body_range ([this] (void) -> iter  { return get_pivot (); },
-                    [this] (void) -> iter  { return end (); })
+      m_phi_range  ([this](void) noexcept -> iter { return begin (); },
+                    [this](void) noexcept -> iter { return get_pivot (); }),
+      m_body_range ([this](void) noexcept -> iter { return get_pivot (); },
+                    [this](void) noexcept -> iter { return end (); })
   { }
 
   void emplace_body (int x)
@@ -427,14 +427,14 @@ public:
 
   test_partition (void)
     : m_pivot (m_data.end ()),
-      m_partition (m_data, [this] (void) -> iter  { return get_pivot (); })
+      m_partition (m_data, [this](void) noexcept -> iter { return get_pivot (); })
   { }
 
   explicit test_partition (int)
     : m_pivot (m_data.end ()),
-      m_partition ([this] (void) -> iter  { return begin (); },
-                   [this] (void) -> iter  { return get_pivot (); },
-                   [this] (void) -> iter  { return end (); })
+      m_partition ([this](void) noexcept -> iter { return begin (); },
+                   [this](void) noexcept -> iter { return get_pivot (); },
+                   [this](void) noexcept -> iter { return end (); })
   { }
 
   void emplace_body (int x)
@@ -514,7 +514,9 @@ S do_test_subrange (S&& s)
   return s;
 }
 
-void do_test_partition_view (void)
+static
+void
+do_test_partition_view (void)
 {
   test_partition p1;
   test_partition p2 (0);
@@ -668,7 +670,9 @@ void do_test_partition (void)
 
 }
 
-void do_test_list_partition (void)
+static
+void
+do_test_list_partition (void)
 {
   list_partition<int, 3> p1;
   auto& r1 = get_subrange<0> (p1);
@@ -709,25 +713,25 @@ void do_test_list_partition (void)
   auto p3 = partition_cat (p1, p2);
   auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
 
-  print_partition_view (p3.partition_view ());
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p3.get_partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   list_partition<int, 3> p6 (std::list<int>::allocator_type { });
 
-  auto pv = p1.partition_view ();
+  auto pv = p1.get_partition_view ();
   print_partition_view (pv);
 
   const auto& y = p1;
-  auto cpv = y.partition_view ();
+  auto cpv = y.get_partition_view ();
   print_partition_view (cpv);
 
   std::cout << "advance begin: \n";
   p4.advance_begin<2> (1);
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   std::cout << "advance end: \n";
   p4.advance_end<9> (3);
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   try
   {
@@ -788,7 +792,9 @@ void do_test_list_partition (void)
 
 }
 
-void do_test_vector_partition (void)
+static
+void
+do_test_vector_partition (void)
 {
   vector_partition<int, 3> p1;
   auto& r1 = get_subrange<0> (p1);
@@ -829,25 +835,25 @@ void do_test_vector_partition (void)
   auto p3 = partition_cat (p1, p2);
   auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
 
-  print_partition_view (p3.partition_view ());
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p3.get_partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   vector_partition<int, 3> p6 (std::vector<int>::allocator_type { });
 
-  auto pv = p1.partition_view ();
+  auto pv = p1.get_partition_view ();
   print_partition_view (pv);
 
   const auto& y = p1;
-  auto cpv = y.partition_view ();
+  auto cpv = y.get_partition_view ();
   print_partition_view (cpv);
 
   std::cout << "advance begin: \n";
   p4.advance_begin<2> (1);
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   std::cout << "advance end: \n";
   p4.advance_end<9> (3);
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   try
   {
@@ -950,25 +956,25 @@ void do_test_partition (void)
   auto p3 = partition_cat (p1, p2);
   auto p4 = partition_cat (p1, partition_cat (p1, p2), p3);
 
-  print_partition_view (p3.partition_view ());
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p3.get_partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   partition_resized_t<Partition, 3> p6 (typename Partition::data_allocator_type { });
 
-  auto pv = p1.partition_view ();
+  auto pv = p1.get_partition_view ();
   print_partition_view (pv);
 
   const auto& y = p1;
-  auto cpv = y.partition_view ();
+  auto cpv = y.get_partition_view ();
   print_partition_view (cpv);
 
   std::cout << "advance begin: \n";
   get_subrange<2> (p4).advance_begin (1);
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   std::cout << "advance end: \n";
   get_subrange<9> (p4).advance_begin (3);
-  print_partition_view (p4.partition_view ());
+  print_partition_view (p4.get_partition_view ());
 
   try
   {
@@ -1089,7 +1095,9 @@ enum class key7 : int
   second =  1,
 };
 
-void do_test_enum_access (void)
+static
+void
+do_test_enum_access (void)
 {
 #ifdef GCH_TEMPLATE_AUTO
 

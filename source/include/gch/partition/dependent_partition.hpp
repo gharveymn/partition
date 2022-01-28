@@ -13,45 +13,66 @@
 #include <array>
 #include <functional>
 
+#ifdef __clang__
+#  if defined (__cplusplus) && __cplusplus >= 201703L
+#    ifndef GCH_CLANG_17
+#      define GCH_CLANG_17
+#    endif
+#  endif
+#endif
+
 #ifndef GCH_CPP14_CONSTEXPR
-#  if __cpp_constexpr >= 201304L
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201304L
 #    define GCH_CPP14_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP14_CONSTEXPR
+#      define GCH_HAS_CPP14_CONSTEXPR
+#    endif
 #  else
 #    define GCH_CPP14_CONSTEXPR
 #  endif
 #endif
 
 #ifndef GCH_CPP17_CONSTEXPR
-#  if __cpp_constexpr >= 201603L
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201603L
 #    define GCH_CPP17_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP17_CONSTEXPR
+#      define GCH_HAS_CPP17_CONSTEXPR
+#    endif
 #  else
 #    define GCH_CPP17_CONSTEXPR
 #  endif
 #endif
 
 #ifndef GCH_CPP20_CONSTEXPR
-#  if __cpp_constexpr >= 201907L
+#  if defined (__cpp_constexpr) && __cpp_constexpr >= 201907L
 #    define GCH_CPP20_CONSTEXPR constexpr
+#    ifndef GCH_HAS_CPP20_CONSTEXPR
+#      define GCH_HAS_CPP20_CONSTEXPR
+#    endif
 #  else
 #    define GCH_CPP20_CONSTEXPR
 #  endif
 #endif
 
 #ifndef GCH_NODISCARD
-#  if __has_cpp_attribute(nodiscard) >= 201603L
-#    define GCH_NODISCARD [[nodiscard]]
+#  if defined (__has_cpp_attribute) && __has_cpp_attribute (nodiscard) >= 201603L
+#    if ! defined (__clang__) || defined (GCH_CLANG_17)
+#      define GCH_NODISCARD [[nodiscard]]
+#    else
+#      define GCH_NODISCARD
+#    endif
 #  else
 #    define GCH_NODISCARD
 #  endif
 #endif
 
-#if __cpp_impl_three_way_comparison >= 201907L
+#if defined (__cpp_impl_three_way_comparison) && __cpp_impl_three_way_comparison >= 201907L
 #  ifndef GCH_IMPL_THREE_WAY_COMPARISON
 #    define GCH_IMPL_THREE_WAY_COMPARISON
 #  endif
-#  if __has_include(<compare>)
+#  if defined (__has_include) && __has_include(<compare>)
 #    include <compare>
-#    if __cpp_lib_three_way_comparison >= 201907L
+#    if defined (__cpp_lib_three_way_comparison) && __cpp_lib_three_way_comparison >= 201907L
 #      ifndef GCH_LIB_THREE_WAY_COMPARISON
 #        define GCH_LIB_THREE_WAY_COMPARISON
 #      endif
@@ -74,13 +95,12 @@ namespace gch
     template <typename U>
     struct is_nothrow_swappable
     {
-    private:
       static constexpr bool test (void)
       {
         using std::swap;
         return noexcept (swap (std::declval<U&> (), std::declval<U&> ()));
       }
-    public:
+
       static constexpr bool value = test ();
     };
   public:
@@ -201,9 +221,13 @@ namespace gch
               typename = typename std::enable_if<(sizeof... (EdgeFuncs) == N - 1)>::type>
     constexpr explicit dependent_partition_view (Container& c, EdgeFuncs&&... edges)
       : dependent_partition_view (std::integral_constant<std::size_t, 0> {},
-                                  [&c] (void) -> typename subrange_type::iter { return c.begin (); },
+                                  [&c](void) noexcept -> typename subrange_type::iter {
+                                    return c.begin ();
+                                  },
                                   std::forward<EdgeFuncs> (edges)...,
-                                  [&c] (void) -> typename subrange_type::iter { return c.end (); })
+                                  [&c](void) noexcept -> typename subrange_type::iter {
+                                    return c.end ();
+                                  })
     { }
 
     GCH_NODISCARD iter    begin   (void)       noexcept { return m_subranges.begin ();   }

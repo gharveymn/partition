@@ -657,29 +657,16 @@ namespace gch
   template <auto EnumIndex, typename PartitionRef,
             std::enable_if_t<is_partition_ref_v<PartitionRef>
                          &&  std::is_enum_v<decltype (EnumIndex)>
+                         &&! std::is_convertible_v<decltype (EnumIndex), std::size_t>
                          &&  std::is_convertible_v<std::underlying_type_t<decltype (EnumIndex)>,
                                                    std::size_t>
-                         &&  has_subrange_v<static_cast<std::size_t> (EnumIndex),
-                                            PartitionRef>> * = nullptr>
+                         &&  has_subrange_v<static_cast<std::size_t> (EnumIndex), PartitionRef>
+                             > * = nullptr>
   constexpr
   get_subrange_t<static_cast<std::size_t> (EnumIndex), PartitionRef>
   get_subrange (PartitionRef&& p) noexcept
   {
     return get_subrange<static_cast<std::size_t> (EnumIndex)> (std::forward<PartitionRef> (p));
-  }
-
-  template <auto Index, typename PartitionRef,
-            std::enable_if_t<is_partition_ref_v<PartitionRef>
-                         &&! std::is_enum_v<decltype (Index)>
-                         &&! std::is_same_v<decltype (Index), std::size_t>
-                         &&  std::is_convertible_v<decltype (Index), std::size_t>
-                         &&  has_subrange_v<static_cast<std::size_t> (Index),
-                                            PartitionRef>> * = nullptr>
-  constexpr
-  get_subrange_t<static_cast<std::size_t> (Index), PartitionRef>
-  get_subrange (PartitionRef&& p) noexcept
-  {
-    return get_subrange<static_cast<std::size_t> (Index)> (std::forward<PartitionRef> (p));
   }
 
 #else
@@ -1094,7 +1081,7 @@ namespace gch
     typename std::enable_if<(Index < partition_size<nonconst_partition_type>::value)>::type
     init_views (partition_type& p)
     {
-      m_subrange_views[Index] = p.template subrange_view<Index> ();
+      m_subrange_views[Index] = p.template get_subrange_view<Index> ();
       init_views<Index + 1> (p);
     }
 
@@ -1317,7 +1304,7 @@ namespace gch
       decltype (auto)
       call (T&& t) const
       {
-        return operator() (std::forward<T> (t));
+        return std::invoke (*this, std::forward<T> (t));
       }
 
       using Fs::operator()...;
